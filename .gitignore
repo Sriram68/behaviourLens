@@ -13,3 +13,5 @@ local.settings.json
 databricks/notebooks/.databricks/
 coverage/
 .pytest_cache/
+.coverage
+htmlcov/
