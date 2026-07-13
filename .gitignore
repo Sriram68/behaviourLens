@@ -1,0 +1,15 @@
+.claude/
+node_modules/
+.env
+.env.local
+__pycache__/
+*.pyc
+.venv/
+venv/
+local.settings.json
+.vscode/
+*.log
+.DS_Store
+databricks/notebooks/.databricks/
+coverage/
+.pytest_cache/

@@ -1,0 +1,66 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<title>BehaviorLens Demo App</title>
+<style>
+  body { font-family: system-ui, sans-serif; max-width: 760px; margin: 2rem auto; padding: 0 1rem; }
+  section { border: 1px solid #ccc; border-radius: 8px; padding: 1rem 1.25rem; margin-bottom: 1.25rem; }
+  h2 { margin-top: 0; font-size: 1.05rem; }
+  button { margin: 0.25rem 0.4rem 0.25rem 0; padding: 0.4rem 0.8rem; cursor: pointer; }
+  input, select { padding: 0.35rem; margin-right: 0.5rem; }
+  #log { background: #111; color: #0f0; font-family: monospace; font-size: 0.75rem; height: 220px; overflow-y: auto; padding: 0.75rem; border-radius: 6px; }
+  #log div { white-space: pre-wrap; border-bottom: 1px solid #333; padding: 2px 0; }
+</style>
+</head>
+<body>
+  <h1>BehaviorLens Demo App</h1>
+  <p>Every interaction below fires an event through the BehaviorLens SDK to the local ingestion endpoint.</p>
+
+  <section>
+    <h2>Login &amp; Onboarding Flow</h2>
+    <form id="login-form">
+      <input type="email" id="email" placeholder="email" value="demo@psiog.com" required />
+      <input type="password" id="password" placeholder="password" value="demopass" required />
+      <button type="submit">Login</button>
+    </form>
+    <div id="onboarding" style="display:none; margin-top:0.75rem;">
+      <button data-step="1">Onboarding Step 1</button>
+      <button data-step="2">Onboarding Step 2</button>
+      <button data-step="3">Onboarding Step 3</button>
+    </div>
+  </section>
+
+  <section>
+    <h2>Core Feature Usage Flow</h2>
+    <button id="feature-click">Use Feature</button>
+    <br />
+    <input type="text" id="search-input" placeholder="search query" />
+    <button id="search-btn">Search</button>
+    <br />
+    <select id="filter-select">
+      <option value="">Choose filter…</option>
+      <option value="last_7_days">Last 7 days</option>
+      <option value="active_users">Active users</option>
+      <option value="errors_only">Errors only</option>
+    </select>
+    <br />
+    <button id="export-btn">Export</button>
+  </section>
+
+  <section>
+    <h2>Error &amp; Recovery Flow</h2>
+    <button id="api-error-btn">Trigger API Error</button>
+    <button id="not-found-btn">Visit Missing Page</button>
+    <button id="retry-btn">Retry</button>
+  </section>
+
+  <section>
+    <h2>Event Log</h2>
+    <div id="log"></div>
+  </section>
+
+  <script src="../sdk/src/behaviorlens.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
