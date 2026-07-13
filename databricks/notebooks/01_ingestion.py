@@ -51,7 +51,7 @@ events_raw = (
     .dropDuplicates(["eventName", "userId", "sessionId", "timestamp"])
 )
 
-events_raw.write.format("delta").mode("overwrite").saveAsTable("events_raw")
+events_raw.write.format("delta").mode("overwrite").option("overwriteSchema", "true").saveAsTable("events_raw")
 print(f"events_raw row count: {events_raw.count()}")
 
 # COMMAND ----------
@@ -79,6 +79,6 @@ events_enriched = (
     )
 )
 
-events_enriched.write.format("delta").mode("overwrite").saveAsTable("events_enriched")
+events_enriched.write.format("delta").mode("overwrite").option("overwriteSchema", "true").saveAsTable("events_enriched")
 print(f"events_enriched row count: {events_enriched.count()}")
 display(events_enriched.limit(20))

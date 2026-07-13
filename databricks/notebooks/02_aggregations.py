@@ -41,7 +41,7 @@ session_summary = (
     )
 )
 
-session_summary.write.format("delta").mode("overwrite").saveAsTable("session_summary")
+session_summary.write.format("delta").mode("overwrite").option("overwriteSchema", "true").saveAsTable("session_summary")
 print(f"session_summary row count: {session_summary.count()}")
 
 # COMMAND ----------
@@ -62,7 +62,7 @@ feature_adoption_daily = (
     .orderBy("event_date", "eventName")
 )
 
-feature_adoption_daily.write.format("delta").mode("overwrite").saveAsTable("feature_adoption_daily")
+feature_adoption_daily.write.format("delta").mode("overwrite").option("overwriteSchema", "true").saveAsTable("feature_adoption_daily")
 print(f"feature_adoption_daily row count: {feature_adoption_daily.count()}")
 
 # COMMAND ----------
@@ -84,6 +84,6 @@ error_summary_daily = (
     .orderBy(F.desc("event_count"))
 )
 
-error_summary_daily.write.format("delta").mode("overwrite").saveAsTable("error_summary_daily")
+error_summary_daily.write.format("delta").mode("overwrite").option("overwriteSchema", "true").saveAsTable("error_summary_daily")
 print(f"error_summary_daily row count: {error_summary_daily.count()}")
 display(error_summary_daily)
