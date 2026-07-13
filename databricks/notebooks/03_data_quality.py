@@ -23,7 +23,7 @@ spark.sql(f"USE SCHEMA {schema}")
 
 # COMMAND ----------
 
-from great_expectations.dataset import SparkDFDataset
+from great_expectations.dataset import PandasDataset
 
 KNOWN_EVENT_NAMES = [
     "login_attempt", "login_success", "onboarding_step_complete",
@@ -35,8 +35,11 @@ results = {}
 
 
 def validate(table_name, expectations_fn):
-    df = spark.table(table_name)
-    ge_df = SparkDFDataset(df)
+    # Converted to Pandas: Great Expectations' SparkDFDataset issues a
+    # CACHE/PERSIST TABLE statement internally, which serverless compute
+    # rejects. Table sizes in this POC are small enough for the driver.
+    pdf = spark.table(table_name).toPandas()
+    ge_df = PandasDataset(pdf)
     results[table_name] = expectations_fn(ge_df)
 
 # COMMAND ----------
