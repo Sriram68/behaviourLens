@@ -4,6 +4,12 @@ Lightweight behavioral analytics platform: JS event SDK → Azure Functions inge
 
 See [S3-C-01_BehaviorLens_Proposal.md](S3-C-01_BehaviorLens_Proposal.md) for the full proposal.
 
+## Docs
+
+- [docs/architecture.md](docs/architecture.md) — full data flow, and the two deliberate substitutions made for this checkpoint
+- [docs/event-schema.md](docs/event-schema.md) — event schema reference, all 10 tracked events
+- [docs/qa-report.md](docs/qa-report.md) — test results, coverage, data quality checks, scale test results, bugs found and fixed
+
 ## Structure
 
 - `sdk/` — framework-agnostic JS event tracking SDK (batching, session/user IDs, schema validation)
