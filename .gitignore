@@ -1,5 +1,6 @@
 .claude/
 scratch/
+*_MidTermDoc.docx
 node_modules/
 .env
 .env.local
