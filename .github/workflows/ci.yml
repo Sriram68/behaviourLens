@@ -32,3 +32,24 @@ jobs:
           python-version: "3.11"
       - run: pip install -r requirements-dev.txt
       - run: pytest tests/ --cov=function_app --cov-report=term-missing
+
+  e2e-tests:
+    runs-on: ubuntu-latest
+    # Non-blocking: these hit the live Azure Function over the network, so a
+    # transient failure here shouldn't block merges the way sdk-tests and
+    # function-tests (fully local/mocked) do. Promote once proven stable.
+    continue-on-error: true
+    defaults:
+      run:
+        working-directory: e2e
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - run: npm install
+      - run: npx playwright install --with-deps chromium
+      - run: npx playwright test

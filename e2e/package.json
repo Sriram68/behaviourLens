@@ -1,0 +1,12 @@
+{
+  "name": "behaviorlens-e2e",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Playwright E2E tests: demo app -> BehaviorLens SDK -> live Azure Function",
+  "scripts": {
+    "test": "playwright test"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.47.0"
+  }
+}

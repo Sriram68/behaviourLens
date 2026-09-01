@@ -17,6 +17,7 @@ See [S3-C-01_BehaviorLens_Proposal.md](S3-C-01_BehaviorLens_Proposal.md) for the
 - `azure-function/` — Python HTTP-triggered Function that receives batched events and writes NDJSON to Blob Storage
 - `databricks/notebooks/` — ingestion, enrichment, and aggregation notebooks
 - `qa/` — Great Expectations data validation suite
+- `e2e/` — Playwright E2E tests covering all 3 flows against the live Function
 - `docs/` — architecture, event schema reference, QA reports
 
 ## Note on Azure Function hosting
@@ -39,4 +40,10 @@ npm test
 # Demo app (serve statically so fetch isn't blocked by file:// CORS)
 python -m http.server 5500
 # open http://localhost:5500/demo-app/index.html
+
+# E2E tests (spins up the same static server itself)
+cd e2e
+npm install
+npx playwright install --with-deps chromium
+npm test
 ```

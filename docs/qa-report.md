@@ -9,6 +9,7 @@
 | CI | GitHub Actions | Green on every push — [run 29266759706](https://github.com/Sriram68/behaviourLens/actions/runs/29266759706) |
 | Data quality | Great Expectations | 15/15 checks passing across 5 Delta tables |
 | Scale test | Synthetic load generator | 5,992 events (811 pre-existing + 5,180 new), full pipeline in 123s wall clock |
+| E2E | Playwright | 3/3 flow scenarios passing against the live Azure Function |
 
 ## SDK test suite (`sdk/tests/behaviorlens.test.js`)
 
@@ -41,6 +42,20 @@ Coverage:    86% (function_app.py)
 - Full pipeline (ingestion → aggregation → data quality) completed in **123s wall clock** on Databricks serverless compute — ingestion 43.5s, aggregations 22.5s, data quality 55.4s
 - All 15 Great Expectations checks still passed at this volume
 
+## E2E test suite (`e2e/tests/`)
+
+3 Playwright scenarios, one per proposal flow, run against the demo app served locally and the **live deployed Azure Function** (not a mock) — covering the full browser → SDK → ingestion path:
+
+- `login-onboarding.spec.js` — login + onboarding steps, asserts DOM event log and a real `200` from `/api/events`
+- `feature-usage.spec.js` — feature click, search, filter, export
+- `error-recovery.spec.js` — API error, 404, retry
+
+```
+3 passed (11.3s)
+```
+
+Wired into CI as `e2e-tests` in `.github/workflows/ci.yml`, marked `continue-on-error: true` since it depends on live network access to Azure rather than being fully local/mocked like `sdk-tests` and `function-tests` — will promote to merge-blocking once proven stable over more runs.
+
 ## Bugs found and fixed during this QA pass
 
 Real defects surfaced and were fixed before each scale test passed — left in this report because catching them is the point of embedding QA into every stage rather than validating happy-path-only:
@@ -48,9 +63,9 @@ Real defects surfaced and were fixed before each scale test passed — left in t
 1. **Great Expectations `SparkDFDataset` incompatible with serverless compute.** It issues an internal `CACHE TABLE`/`PERSIST TABLE` statement to speed up repeated expectation checks, which Databricks serverless rejects (`NOT_SUPPORTED_WITH_SERVERLESS`). Fixed by validating via `PandasDataset` instead — the tables in this POC are small enough for driver-side validation without losing coverage.
 2. **Delta schema mismatch on overwrite.** The `properties` column is a struct inferred from whatever event types are present in a given ingestion run; a narrower first run (7 events) created a table schema that a later, more diverse run (811 events, more event types) didn't match, and Delta's `overwrite` mode rejects schema changes by default. Fixed by adding `.option("overwriteSchema", "true")` to all five table writes.
 3. **`01_ingestion.py` silently dropped events under nested date folders.** `spark.read.json(raw_path)` does not recurse into subdirectories by default. The Azure Function names blobs `YYYY/MM/DD/uuid.ndjson` (date-partitioned), and once that structure was preserved when syncing into the Unity Catalog Volume for the Phase 2 scale test, ingestion silently read 0 new rows from any dated subfolder — the run "succeeded" but produced numbers identical to a stale prior run, with no error raised. Fixed by adding `.option("recursiveFileLookup", "true")` to the read. This is the more dangerous class of bug precisely because it fails silently rather than loudly — caught only because the post-run row counts were sanity-checked against the expected event volume instead of just checking the job succeeded.
+4. **No CORS configured on the deployed Function App.** The SDK's `fetch()` call sends `Content-Type: application/json`, which isn't CORS-safelisted and triggers a browser preflight `OPTIONS` request. The freshly deployed Function had no CORS policy, so any real browser would have silently failed to deliver events — this had never surfaced before because local dev via `func start` enables permissive CORS by default, masking the gap. Caught before writing the E2E suite by checking `az functionapp cors show` returned empty; fixed with `az functionapp cors add --allowed-origins http://localhost:5500`, verified via a manual preflight request before trusting Playwright's results.
 
 ## Known gaps (documented, not hidden)
 
-- E2E browser automation (Playwright) not implemented yet — the demo app flow was verified manually and via the synthetic load generator hitting the same ingestion endpoint. Planned for Phase 3.
 - Load test target in the original proposal was 5,000+ events; met in Phase 2 (5,180 new + 811 pre-existing = 5,992 total processed end-to-end).
 - Function App and Databricks-to-Blob mount substitutions are documented in [architecture.md](architecture.md) — both are real, working equivalents, not simulated stand-ins.

@@ -29,7 +29,7 @@ Databricks Free Edition
 
 At the Week 10 checkpoint, the target Azure subscription's resource group (`rg-pSiddhi3.0-2026-01-sem3-Sriram`) restricted `Microsoft.Web/ServerFarms/write` and `Microsoft.Web/Sites/write`, blocking Function App creation, so the Function ran locally via Core Tools against real Azure Storage.
 
-For Phase 2, the ingestion Function (`azure-function/function_app.py`, unchanged code) is deployed for real on a personal Azure subscription (`rg-behaviorlens`, `func-behaviorlens47209`, Python 3.11 on Linux Consumption) since the restricted `pSiddhi` subscription was never unblocked. Live endpoint: `https://func-behaviorlens47209.azurewebsites.net/api/events`, writing to the `raw-events` container on `stbehaviorlens47209`.
+For Phase 2, the ingestion Function (`azure-function/function_app.py`, unchanged code) is deployed for real on a personal Azure subscription (`rg-behaviorlens`, `func-behaviorlens47209`, Python 3.11 on Linux Consumption) since the restricted `pSiddhi` subscription was never unblocked. Live endpoint: `https://func-behaviorlens47209.azurewebsites.net/api/events`, writing to the `raw-events` container on `stbehaviorlens47209`. CORS is explicitly configured (`http://localhost:5500`) since a real deployment doesn't get the permissive default `func start` applies locally — see the QA report for how this was caught before it silently broke browser-based ingestion.
 
 ### Databricks reads from a Unity Catalog Volume, not directly from Blob Storage
 
