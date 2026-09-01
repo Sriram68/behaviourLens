@@ -23,17 +23,15 @@ Databricks Free Edition
 (Phase 2: Power BI dashboards + Gemini AI insight narratives)
 ```
 
-## Two deliberate substitutions from the original proposal
+## One remaining deliberate substitution, and one now resolved
 
-Both are functionally equivalent to what was proposed — same code paths, same data shapes — substituted only where the original plan assumed cloud resources this subscription/workspace couldn't provide within the 2-day window.
+### Resolved: Azure Function is deployed to Azure
 
-### 1. Azure Function runs locally, not deployed to Azure
+At the Week 10 checkpoint, the target Azure subscription's resource group (`rg-pSiddhi3.0-2026-01-sem3-Sriram`) restricted `Microsoft.Web/ServerFarms/write` and `Microsoft.Web/Sites/write`, blocking Function App creation, so the Function ran locally via Core Tools against real Azure Storage.
 
-The target Azure subscription's resource group (`rg-pSiddhi3.0-2026-01-sem3-Sriram`) restricts `Microsoft.Web/ServerFarms/write` and `Microsoft.Web/Sites/write`, blocking Function App creation in the portal, and the account has no path to self-assign a broader role.
+For Phase 2, the ingestion Function (`azure-function/function_app.py`, unchanged code) is deployed for real on a personal Azure subscription (`rg-behaviorlens`, `func-behaviorlens47209`, Python 3.11 on Linux Consumption) since the restricted `pSiddhi` subscription was never unblocked. Live endpoint: `https://func-behaviorlens47209.azurewebsites.net/api/events`, writing to the `raw-events` container on `stbehaviorlens47209`.
 
-Instead, the ingestion Function (`azure-function/function_app.py`) runs locally via **Azure Functions Core Tools** (`func start`), using the real Azure Storage account and container via connection string. It writes real NDJSON blobs to real Azure Blob Storage — the only difference from production is where the Function process itself is hosted. Deploying to Azure later is a single command (`func azure functionapp publish`) once permissions allow it.
-
-### 2. Databricks reads from a Unity Catalog Volume, not directly from Blob Storage
+### Databricks reads from a Unity Catalog Volume, not directly from Blob Storage
 
 Databricks Free Edition runs on Databricks-managed infrastructure (confirmed via the Unity Catalog metastore: `metastore_aws_us_east_2`), not inside the Azure subscription. Mounting an external Azure Blob container would require configuring Unity Catalog storage credentials and external locations across clouds — a genuine setup path, but not one to gamble a 2-day deadline on.
 

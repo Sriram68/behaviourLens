@@ -21,7 +21,7 @@ See [S3-C-01_BehaviorLens_Proposal.md](S3-C-01_BehaviorLens_Proposal.md) for the
 
 ## Note on Azure Function hosting
 
-The target subscription's resource group restricts `Microsoft.Web/*` write permissions, blocking Function App creation in the portal. The ingestion Function runs locally via Azure Functions Core Tools (`func start`) against the real Azure Storage account/container — same code, deployable to Azure with `func azure functionapp publish` once elevated permissions are available.
+The ingestion Function is deployed to Azure: `https://func-behaviorlens47209.azurewebsites.net/api/events` (personal subscription — the original `pSiddhi` subscription's resource group restricted `Microsoft.Web/*` write permissions, so it never hosted the deployed Function; see [docs/architecture.md](docs/architecture.md)). It can still be run locally via Azure Functions Core Tools (`func start`) against the same storage account for offline development.
 
 ## Running locally
 

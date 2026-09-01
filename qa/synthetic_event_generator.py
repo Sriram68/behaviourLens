@@ -3,12 +3,13 @@ ingestion endpoint, exercising the SDK->Function->Blob path at higher volume
 than manual UI clicks can produce. Used for the E2E scale test."""
 
 import json
+import os
 import random
 import urllib.request
 import uuid
 from datetime import datetime, timedelta, timezone
 
-ENDPOINT = "http://localhost:7071/api/events"
+ENDPOINT = os.environ.get("BEHAVIORLENS_ENDPOINT", "https://func-behaviorlens47209.azurewebsites.net/api/events")
 TOTAL_EVENTS = 800
 BATCH_SIZE = 20
 NUM_USERS = 60

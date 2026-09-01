@@ -1,5 +1,5 @@
 BehaviorLens.init({
-  endpoint: "http://localhost:7071/api/events",
+  endpoint: "https://func-behaviorlens47209.azurewebsites.net/api/events",
   batchSize: 3,
   flushIntervalMs: 3000,
 });
