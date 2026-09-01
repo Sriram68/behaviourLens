@@ -35,7 +35,11 @@ For Phase 2, the ingestion Function (`azure-function/function_app.py`, unchanged
 
 Databricks Free Edition runs on Databricks-managed infrastructure (confirmed via the Unity Catalog metastore: `metastore_aws_us_east_2`), not inside the Azure subscription. Mounting an external Azure Blob container would require configuring Unity Catalog storage credentials and external locations across clouds — a genuine setup path, but not one to gamble a 2-day deadline on.
 
-Instead, NDJSON files are synced from the `raw-events` Blob container into a Unity Catalog Volume (`workspace.default.raw_events`) via the Databricks Files REST API, and `01_ingestion.py` reads from that Volume path. The transformation logic (schema validation, deduplication, sessionization, aggregation) is identical to what would run against a direct Blob mount.
+Instead, NDJSON files are synced from the `raw-events` Blob container into a Unity Catalog Volume (`workspace.default.raw_events`) via the Databricks Files REST API — now a committed, reusable script (`databricks/sync_raw_events.py`) rather than an undocumented manual step. The transformation logic (schema validation, deduplication, sessionization, aggregation) is identical to what would run against a direct Blob mount.
+
+### Databricks workspace changed for Phase 2
+
+The mid-term work was done in a Databricks Free Edition workspace under a different sign-in than the one available for Phase 2; that original workspace's login couldn't be located, so Phase 2 continues in a new Free Edition workspace (`dbc-6051f46c-210c.cloud.databricks.com`). No data is actually lost — the 3 notebooks are the source of truth and fully regenerate `events_raw` through `qa_data_quality_results` from raw events on any workspace. The scale-test numbers below reflect this new workspace, seeded with both the original 811 mid-term events (already present in its `raw_events` Volume) and the new Phase 2 batch.
 
 ## Notebooks
 
@@ -47,4 +51,4 @@ Instead, NDJSON files are synced from the `raw-events` Blob container into a Uni
 
 ## Validated at scale
 
-811 synthetic events (60 users, 3 flows, timestamps spread across 3 days) processed end-to-end — ingestion → aggregation → data quality — in 120s wall clock on serverless compute, including cold-start. See [qa-report.md](qa-report.md) for full results.
+5,992 events (811 from the mid-term run + 5,180 from the Phase 2 scale test, 60 synthetic users, 3 flows) processed end-to-end — ingestion → aggregation → data quality — in 123s wall clock on serverless compute, including cold-start. See [qa-report.md](qa-report.md) for full results.

@@ -21,7 +21,7 @@ spark.sql(f"USE SCHEMA {schema}")
 
 from pyspark.sql import functions as F
 
-raw_df = spark.read.json(raw_path)
+raw_df = spark.read.option("recursiveFileLookup", "true").json(raw_path)
 
 expected_columns = {"eventName", "userId", "sessionId", "timestamp", "pageUrl", "properties"}
 missing = expected_columns - set(raw_df.columns)

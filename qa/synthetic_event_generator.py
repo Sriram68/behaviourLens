@@ -2,15 +2,17 @@
 ingestion endpoint, exercising the SDK->Function->Blob path at higher volume
 than manual UI clicks can produce. Used for the E2E scale test."""
 
+import argparse
 import json
 import os
 import random
+import time
+import urllib.error
 import urllib.request
 import uuid
 from datetime import datetime, timedelta, timezone
 
 ENDPOINT = os.environ.get("BEHAVIORLENS_ENDPOINT", "https://func-behaviorlens47209.azurewebsites.net/api/events")
-TOTAL_EVENTS = 800
 BATCH_SIZE = 20
 NUM_USERS = 60
 DAYS_BACK = 3
@@ -59,17 +61,35 @@ def send_batch(events):
     req = urllib.request.Request(
         ENDPOINT, data=body, headers={"Content-Type": "application/json"}, method="POST"
     )
-    with urllib.request.urlopen(req) as resp:
+    with urllib.request.urlopen(req, timeout=30) as resp:
         return resp.status, json.loads(resp.read())
 
 
 def main():
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--total-events", type=int, default=800)
+    args = parser.parse_args()
+    total_events = args.total_events
+
     users = [str(uuid.uuid4()) for _ in range(NUM_USERS)]
     sessions = {u: str(uuid.uuid4()) for u in users}
 
     sent = 0
+    failed_batches = 0
     batch = []
-    for _ in range(TOTAL_EVENTS):
+    start = time.monotonic()
+
+    def flush(batch):
+        nonlocal sent, failed_batches
+        try:
+            status, resp = send_batch(batch)
+            sent += len(batch)
+            print(f"sent {sent}/{total_events} (status {status}, blob {resp.get('blob')})")
+        except (urllib.error.HTTPError, urllib.error.URLError) as exc:
+            failed_batches += 1
+            print(f"FAILED batch of {len(batch)} events: {exc}")
+
+    for _ in range(total_events):
         user_id = random.choice(users)
         # 10% chance to start a new session for this user
         if random.random() < 0.1:
@@ -77,17 +97,17 @@ def main():
         batch.append(build_event(user_id, sessions[user_id]))
 
         if len(batch) >= BATCH_SIZE:
-            status, resp = send_batch(batch)
-            sent += len(batch)
-            print(f"sent {sent}/{TOTAL_EVENTS} (status {status}, blob {resp.get('blob')})")
+            flush(batch)
             batch = []
 
     if batch:
-        status, resp = send_batch(batch)
-        sent += len(batch)
-        print(f"sent {sent}/{TOTAL_EVENTS} (status {status}, blob {resp.get('blob')})")
+        flush(batch)
 
-    print(f"Done. Sent {sent} synthetic events across {NUM_USERS} users.")
+    elapsed = time.monotonic() - start
+    print(
+        f"Done. Sent {sent}/{total_events} synthetic events across {NUM_USERS} users "
+        f"in {elapsed:.1f}s wall clock ({failed_batches} failed batches)."
+    )
 
 
 if __name__ == "__main__":

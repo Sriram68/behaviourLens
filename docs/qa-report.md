@@ -8,7 +8,7 @@
 | Azure Function unit tests | Pytest | 6/6 passing, 86% coverage |
 | CI | GitHub Actions | Green on every push — [run 29266759706](https://github.com/Sriram68/behaviourLens/actions/runs/29266759706) |
 | Data quality | Great Expectations | 15/15 checks passing across 5 Delta tables |
-| Scale test | Synthetic load generator | 811 events, full pipeline in 120s wall clock |
+| Scale test | Synthetic load generator | 5,992 events (811 pre-existing + 5,180 new), full pipeline in 123s wall clock |
 
 ## SDK test suite (`sdk/tests/behaviorlens.test.js`)
 
@@ -34,21 +34,23 @@ Coverage:    86% (function_app.py)
 
 ## Scale test
 
-`qa/synthetic_event_generator.py` generates realistic synthetic events (weighted across the 3 flows, 60 synthetic users, timestamps spread over 3 days) and sends them through the real SDK-equivalent path (batched POSTs to the ingestion endpoint) — not inserted directly into Blob Storage, so the full path is exercised.
+`qa/synthetic_event_generator.py` generates realistic synthetic events (weighted across the 3 flows, 60 synthetic users, timestamps spread over 3 days) and sends them through the real SDK-equivalent path (batched POSTs to the ingestion endpoint) — not inserted directly into Blob Storage, so the full path is exercised. For Phase 2 the target was raised to 5,000+ events and pointed at the now-deployed Azure Function (`func-behaviorlens47209`, see [architecture.md](architecture.md)).
 
-- 811 events processed → 138 sessions, 16 feature-adoption day/event buckets, 12 error-summary day/event buckets
-- Full pipeline (ingestion → aggregation → data quality) completed in 120s wall clock on Databricks serverless compute, including cold-start
+- 5,200 events attempted, 5,180 delivered (99.6%; 1 transient batch failure) in 305.6s wall clock at the SDK/HTTP layer
+- Combined with 811 pre-existing events already in the Databricks Volume from the mid-term run, the full pipeline processed **5,992 events → 688 sessions, 32 feature-adoption day/event buckets, 24 error-summary day/event buckets**
+- Full pipeline (ingestion → aggregation → data quality) completed in **123s wall clock** on Databricks serverless compute — ingestion 43.5s, aggregations 22.5s, data quality 55.4s
 - All 15 Great Expectations checks still passed at this volume
 
 ## Bugs found and fixed during this QA pass
 
-Two real defects surfaced and were fixed before the scale test passed — left in this report because catching them is the point of embedding QA into every stage rather than validating happy-path-only:
+Real defects surfaced and were fixed before each scale test passed — left in this report because catching them is the point of embedding QA into every stage rather than validating happy-path-only:
 
 1. **Great Expectations `SparkDFDataset` incompatible with serverless compute.** It issues an internal `CACHE TABLE`/`PERSIST TABLE` statement to speed up repeated expectation checks, which Databricks serverless rejects (`NOT_SUPPORTED_WITH_SERVERLESS`). Fixed by validating via `PandasDataset` instead — the tables in this POC are small enough for driver-side validation without losing coverage.
 2. **Delta schema mismatch on overwrite.** The `properties` column is a struct inferred from whatever event types are present in a given ingestion run; a narrower first run (7 events) created a table schema that a later, more diverse run (811 events, more event types) didn't match, and Delta's `overwrite` mode rejects schema changes by default. Fixed by adding `.option("overwriteSchema", "true")` to all five table writes.
+3. **`01_ingestion.py` silently dropped events under nested date folders.** `spark.read.json(raw_path)` does not recurse into subdirectories by default. The Azure Function names blobs `YYYY/MM/DD/uuid.ndjson` (date-partitioned), and once that structure was preserved when syncing into the Unity Catalog Volume for the Phase 2 scale test, ingestion silently read 0 new rows from any dated subfolder — the run "succeeded" but produced numbers identical to a stale prior run, with no error raised. Fixed by adding `.option("recursiveFileLookup", "true")` to the read. This is the more dangerous class of bug precisely because it fails silently rather than loudly — caught only because the post-run row counts were sanity-checked against the expected event volume instead of just checking the job succeeded.
 
 ## Known gaps (documented, not hidden)
 
-- E2E browser automation (Playwright) not implemented for this checkpoint — the demo app flow was verified manually and via the synthetic load generator hitting the same ingestion endpoint.
-- Load test target in the original proposal was 5,000+ events at Phase 2 maturity; this checkpoint validates 811 events, appropriate to the 2-day scope.
+- E2E browser automation (Playwright) not implemented yet — the demo app flow was verified manually and via the synthetic load generator hitting the same ingestion endpoint. Planned for Phase 3.
+- Load test target in the original proposal was 5,000+ events; met in Phase 2 (5,180 new + 811 pre-existing = 5,992 total processed end-to-end).
 - Function App and Databricks-to-Blob mount substitutions are documented in [architecture.md](architecture.md) — both are real, working equivalents, not simulated stand-ins.
