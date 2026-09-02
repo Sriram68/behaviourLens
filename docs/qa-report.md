@@ -8,8 +8,9 @@
 | Azure Function unit tests | Pytest | 6/6 passing, 86% coverage |
 | CI | GitHub Actions | Green on every push — [run 29266759706](https://github.com/Sriram68/behaviourLens/actions/runs/29266759706) |
 | Data quality | Great Expectations | 15/15 checks passing across 5 Delta tables |
-| Scale test | Synthetic load generator | 5,992 events (811 pre-existing + 5,180 new), full pipeline in 123s wall clock |
+| Scale test | Synthetic load generator | 12,001 events spread across ~8 months, full pipeline in ~2min wall clock |
 | E2E | Playwright | 3/3 flow scenarios passing against the live Azure Function |
+| Power BI | 4 required views | Usage Trends, User Journeys, Feature Adoption, Error Patterns — see [powerbi-guide.md](powerbi-guide.md) |
 
 ## SDK test suite (`sdk/tests/behaviorlens.test.js`)
 
@@ -37,10 +38,12 @@ Coverage:    86% (function_app.py)
 
 `qa/synthetic_event_generator.py` generates realistic synthetic events (weighted across the 3 flows, 60 synthetic users, timestamps spread over 3 days) and sends them through the real SDK-equivalent path (batched POSTs to the ingestion endpoint) — not inserted directly into Blob Storage, so the full path is exercised. For Phase 2 the target was raised to 5,000+ events and pointed at the now-deployed Azure Function (`func-behaviorlens47209`, see [architecture.md](architecture.md)).
 
-- 5,200 events attempted, 5,180 delivered (99.6%; 1 transient batch failure) in 305.6s wall clock at the SDK/HTTP layer
-- Combined with 811 pre-existing events already in the Databricks Volume from the mid-term run, the full pipeline processed **5,992 events → 688 sessions, 32 feature-adoption day/event buckets, 24 error-summary day/event buckets**
-- Full pipeline (ingestion → aggregation → data quality) completed in **123s wall clock** on Databricks serverless compute — ingestion 43.5s, aggregations 22.5s, data quality 55.4s
-- All 15 Great Expectations checks still passed at this volume
+- Phase 2 initial run: 5,200 events attempted, 5,180 delivered (99.6%; 1 transient batch failure) in 305.6s wall clock; combined with 811 pre-existing events, the pipeline processed 5,992 events.
+- A second run added `--days-back 240` (a parametrization added specifically for this) to spread 6,000 more events across ~8 months instead of a single 3-day burst, needed to give the Power BI trend visuals real day-to-day variation instead of a flat line.
+- Final state: **12,001 events → 1,343 sessions, 930 feature-adoption day/event buckets, 593 error-summary day/event buckets**, spanning ~8 distinct clusters of days from January through September 2026.
+- Full pipeline (ingestion → aggregation → data quality) completes in **~2 minutes wall clock** on Databricks serverless compute at this volume.
+- All 15 Great Expectations checks still pass at this volume.
+- The pipeline is now also registered as a persistent Databricks Job ("BehaviorLens Pipeline", 3 tasks) under Workflows → Jobs, rather than only existing as ad-hoc API-submitted runs — re-runnable and inspectable from the Databricks UI.
 
 ## E2E test suite (`e2e/tests/`)
 
@@ -65,7 +68,13 @@ Real defects surfaced and were fixed before each scale test passed — left in t
 3. **`01_ingestion.py` silently dropped events under nested date folders.** `spark.read.json(raw_path)` does not recurse into subdirectories by default. The Azure Function names blobs `YYYY/MM/DD/uuid.ndjson` (date-partitioned), and once that structure was preserved when syncing into the Unity Catalog Volume for the Phase 2 scale test, ingestion silently read 0 new rows from any dated subfolder — the run "succeeded" but produced numbers identical to a stale prior run, with no error raised. Fixed by adding `.option("recursiveFileLookup", "true")` to the read. This is the more dangerous class of bug precisely because it fails silently rather than loudly — caught only because the post-run row counts were sanity-checked against the expected event volume instead of just checking the job succeeded.
 4. **No CORS configured on the deployed Function App.** The SDK's `fetch()` call sends `Content-Type: application/json`, which isn't CORS-safelisted and triggers a browser preflight `OPTIONS` request. The freshly deployed Function had no CORS policy, so any real browser would have silently failed to deliver events — this had never surfaced before because local dev via `func start` enables permissive CORS by default, masking the gap. Caught before writing the E2E suite by checking `az functionapp cors show` returned empty; fixed with `az functionapp cors add --allowed-origins http://localhost:5500`, verified via a manual preflight request before trusting Playwright's results.
 
+## Power BI dashboards
+
+4/4 required analytics views built against the Databricks semantic model (Import mode): Usage Trends, User Journeys, Feature Adoption, Error Patterns. Full configuration, model structure, and gotchas hit while building it (a silent relationship-persistence bug, a continuous-axis rendering trap, a `growToFit` misunderstanding) are documented in [powerbi-guide.md](powerbi-guide.md).
+
 ## Known gaps (documented, not hidden)
 
-- Load test target in the original proposal was 5,000+ events; met in Phase 2 (5,180 new + 811 pre-existing = 5,992 total processed end-to-end).
+- Load test target in the original proposal was 5,000+ events; exceeded (12,001 total processed end-to-end, spread across ~8 months rather than one burst).
 - Function App and Databricks-to-Blob mount substitutions are documented in [architecture.md](architecture.md) — both are real, working equivalents, not simulated stand-ins.
+- Kong Gateway OSS (proposal's optional API rate-limiting layer) is intentionally dropped — not in the proposal's minimum compliance requirements, and not worth the added infra this late in the timeline.
+- Gemini AI insights (weekly narratives, anomaly detection, cohort segmentation) not yet implemented — planned next.

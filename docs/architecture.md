@@ -1,7 +1,4 @@
-# BehaviorLens — Architecture (Wednesday Checkpoint Scope)
-
-Scope for this checkpoint: instrumentation, ingestion, and the Databricks pipeline.
-Power BI dashboards and Gemini AI insights are deferred to Phase 2 (see the [proposal](../S3-C-01_BehaviorLens_Proposal.md)).
+# BehaviorLens — Architecture
 
 ## Data flow
 
@@ -20,7 +17,8 @@ Databricks Free Edition
    │  02_aggregations.py → session_summary, feature_adoption_daily, error_summary_daily (Delta)
    │  03_data_quality.py → Great Expectations checks → qa_data_quality_results (Delta)
    ▼
-(Phase 2: Power BI dashboards + Gemini AI insight narratives)
+Power BI (Import mode) — 4 dashboards: Usage Trends, User Journeys, Feature Adoption, Error Patterns
+   (Gemini AI insight narratives: planned next)
 ```
 
 ## One remaining deliberate substitution, and one now resolved
@@ -51,4 +49,10 @@ The mid-term work was done in a Databricks Free Edition workspace under a differ
 
 ## Validated at scale
 
-5,992 events (811 from the mid-term run + 5,180 from the Phase 2 scale test, 60 synthetic users, 3 flows) processed end-to-end — ingestion → aggregation → data quality — in 123s wall clock on serverless compute, including cold-start. See [qa-report.md](qa-report.md) for full results.
+12,001 events (60 synthetic users, 3 flows, spread across ~8 months rather than a single burst — see `qa/synthetic_event_generator.py --days-back`) processed end-to-end — ingestion → aggregation → data quality — in ~2 minutes wall clock on serverless compute, including cold-start. See [qa-report.md](qa-report.md) for full results.
+
+The pipeline is registered as a persistent Databricks Job ("BehaviorLens Pipeline") under Workflows → Jobs, not just ad-hoc API-submitted runs, so it's visible and re-runnable directly from the Databricks UI.
+
+## Power BI dashboards
+
+`BehaviorLens.pbip` — 4 dashboards against the Databricks semantic model (Import mode, Databricks SQL Warehouse). Full model structure, page-by-page visual inventory, and gotchas hit while building it are in [powerbi-guide.md](powerbi-guide.md).
