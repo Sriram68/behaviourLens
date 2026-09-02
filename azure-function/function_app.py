@@ -17,7 +17,6 @@ def _get_container_client():
     return blob_service.get_container_client(container_name)
 
 
-@app.route(route="events", methods=["POST"])
 def ingest_events(req: func.HttpRequest) -> func.HttpResponse:
     try:
         body = req.get_json()
@@ -40,3 +39,6 @@ def ingest_events(req: func.HttpRequest) -> func.HttpResponse:
         status_code=200,
         mimetype="application/json",
     )
+
+
+app.route(route="events", methods=["POST"])(ingest_events)
