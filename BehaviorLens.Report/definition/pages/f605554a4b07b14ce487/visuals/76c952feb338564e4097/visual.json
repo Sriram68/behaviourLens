@@ -1,0 +1,114 @@
+{
+  "$schema": "https://developer.microsoft.com/json-schemas/fabric/item/report/definition/visualContainer/2.1.0/schema.json",
+  "name": "76c952feb338564e4097",
+  "position": {
+    "x": 24.22727860852849,
+    "y": 169.59095025969944,
+    "z": 1001,
+    "height": 523.91489990942864,
+    "width": 1232.5627992088871
+  },
+  "visual": {
+    "visualType": "tableEx",
+    "query": {
+      "queryState": {
+        "Values": {
+          "projections": [
+            {
+              "field": {
+                "Column": {
+                  "Expression": {
+                    "SourceRef": {
+                      "Entity": "ai_insights_weekly"
+                    }
+                  },
+                  "Property": "scenario"
+                }
+              },
+              "queryRef": "ai_insights_weekly.scenario",
+              "nativeQueryRef": "scenario"
+            },
+            {
+              "field": {
+                "Column": {
+                  "Expression": {
+                    "SourceRef": {
+                      "Entity": "ai_insights_weekly"
+                    }
+                  },
+                  "Property": "narrative"
+                }
+              },
+              "queryRef": "ai_insights_weekly.narrative",
+              "nativeQueryRef": "narrative"
+            },
+            {
+              "field": {
+                "Column": {
+                  "Expression": {
+                    "SourceRef": {
+                      "Entity": "ai_insights_weekly"
+                    }
+                  },
+                  "Property": "relevance_score"
+                }
+              },
+              "queryRef": "ai_insights_weekly.relevance_score",
+              "nativeQueryRef": "relevance_score"
+            }
+          ]
+        }
+      }
+    },
+    "objects": {
+      "columnHeaders": [
+        {
+          "properties": {
+            "autoSizeColumnWidth": {
+              "expr": {
+                "Literal": {
+                  "Value": "true"
+                }
+              }
+            }
+          }
+        }
+      ],
+      "values": [
+        {
+          "properties": {
+            "wordWrap": {
+              "expr": {
+                "Literal": {
+                  "Value": "true"
+                }
+              }
+            }
+          }
+        }
+      ]
+    },
+    "visualContainerObjects": {
+      "title": [
+        {
+          "properties": {
+            "show": {
+              "expr": {
+                "Literal": {
+                  "Value": "true"
+                }
+              }
+            },
+            "text": {
+              "expr": {
+                "Literal": {
+                  "Value": "'AI-Generated Weekly Insights'"
+                }
+              }
+            }
+          }
+        }
+      ]
+    }
+  }
+}
