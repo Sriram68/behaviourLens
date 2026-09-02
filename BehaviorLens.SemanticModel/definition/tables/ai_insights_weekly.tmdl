@@ -1,0 +1,41 @@
+table ai_insights_weekly
+	lineageTag: 43083430-6555-40ea-9933-a6cdd7574519
+
+	column scenario
+		dataType: string
+		lineageTag: 635e7066-c66a-4eee-a564-f54f7cc10997
+		sourceColumn: scenario
+
+	column prompt_version
+		dataType: string
+		lineageTag: 2f7d19ae-8aa0-4cfb-bba0-f89f87f090c9
+		sourceColumn: prompt_version
+
+	column narrative
+		dataType: string
+		lineageTag: a8a9330d-540d-4de2-bb22-396c59bca7d5
+		sourceColumn: narrative
+
+	column relevance_score
+		dataType: int64
+		formatString: 0
+		lineageTag: 94c37527-5ea6-494c-8bbd-b99844ca4c0c
+		sourceColumn: relevance_score
+
+	column generated_at
+		dataType: dateTime
+		formatString: General Date
+		lineageTag: 0f928f63-d4e6-40f9-a9a0-3cbac25f76fa
+		sourceColumn: generated_at
+
+	partition ai_insights_weekly = m
+		mode: import
+		source =
+				let
+				    Source = DatabricksMultiCloud.Catalogs("dbc-6051f46c-210c.cloud.databricks.com", "/sql/1.0/warehouses/b785449970d46af7", [Catalog=null, Database=null, EnableAutomaticProxyDiscovery=null]),
+				    workspace_Database = Source{[Name="workspace",Kind="Database"]}[Data],
+				    default_Schema = workspace_Database{[Name="default",Kind="Schema"]}[Data],
+				    ai_insights_weekly_Table = default_Schema{[Name="ai_insights_weekly",Kind="Table"]}[Data]
+				in
+				    ai_insights_weekly_Table
+

@@ -11,6 +11,7 @@
 | Scale test | Synthetic load generator | 12,001 events spread across ~8 months, full pipeline in ~2min wall clock |
 | E2E | Playwright | 3/3 flow scenarios passing against the live Azure Function |
 | Power BI | 4 required views | Usage Trends, User Journeys, Feature Adoption, Error Patterns — see [powerbi-guide.md](powerbi-guide.md) |
+| AI output quality | 3 Gemini scenarios | 100/100 average relevance score (target: >85%) — see [ai-prompt-log.md](ai-prompt-log.md) |
 
 ## SDK test suite (`sdk/tests/behaviorlens.test.js`)
 
@@ -72,9 +73,21 @@ Real defects surfaced and were fixed before each scale test passed — left in t
 
 4/4 required analytics views built against the Databricks semantic model (Import mode): Usage Trends, User Journeys, Feature Adoption, Error Patterns. Full configuration, model structure, and gotchas hit while building it (a silent relationship-persistence bug, a continuous-axis rendering trap, a `growToFit` misunderstanding) are documented in [powerbi-guide.md](powerbi-guide.md).
 
+## AI insights (`databricks/notebooks/04_ai_insights.py`)
+
+3 scenarios per the proposal's AI layer, run as the 4th task in the "BehaviorLens Pipeline" Databricks Job, against `gemini-3.6-flash` (see [ai-prompt-log.md](ai-prompt-log.md) for the model-availability deviation from the proposal's Gemini 2.5 Flash):
+
+- **Weekly narrative** — plain-language feature-adoption summary with a concrete recommendation.
+- **Anomaly detection** — z-score outlier flagging on daily error counts, narrated in plain language. Correctly caught the real Aug 29–Sep 1 spike from the scale-test data (338 errors/day vs. a ~10/day baseline) as a genuine statistical outlier.
+- **Cohort segmentation** — high/low engagement session split (median event count) with a suggested action.
+
+Each narrative is scored for relevance against its own source data by a second Gemini call. Result: **100/100 average relevance** across all 3 scenarios, against the proposal's >85% target. Results persist to `ai_insights_weekly` (Delta) for auditability and are surfaced on a 5th Power BI page ("AI Insights").
+
+Databricks secret `behaviorlens/gemini_api_key` holds the API key — never in notebook source or git.
+
 ## Known gaps (documented, not hidden)
 
 - Load test target in the original proposal was 5,000+ events; exceeded (12,001 total processed end-to-end, spread across ~8 months rather than one burst).
 - Function App and Databricks-to-Blob mount substitutions are documented in [architecture.md](architecture.md) — both are real, working equivalents, not simulated stand-ins.
 - Kong Gateway OSS (proposal's optional API rate-limiting layer) is intentionally dropped — not in the proposal's minimum compliance requirements, and not worth the added infra this late in the timeline.
-- Gemini AI insights (weekly narratives, anomaly detection, cohort segmentation) not yet implemented — planned next.
+- Ollama/local dev-LLM (proposal's zero-cost dev-phase fallback) skipped — Gemini's free tier (1,500 req/day) comfortably covers the ~6 calls/run this project makes, so the extra local setup wasn't worth the time.

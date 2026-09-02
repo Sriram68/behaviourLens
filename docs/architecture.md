@@ -12,13 +12,13 @@ Azure Function — POST /api/events
 Azure Blob Storage (raw-events container)
    │  synced to a Unity Catalog Volume
    ▼
-Databricks Free Edition
-   │  01_ingestion.py   → events_raw, events_enriched (Delta)
+Databricks Free Edition — "BehaviorLens Pipeline" Job (Workflows → Jobs)
+   │  01_ingestion.py    → events_raw, events_enriched (Delta)
    │  02_aggregations.py → session_summary, feature_adoption_daily, error_summary_daily (Delta)
    │  03_data_quality.py → Great Expectations checks → qa_data_quality_results (Delta)
+   │  04_ai_insights.py  → 3 Gemini scenarios → ai_insights_weekly (Delta)
    ▼
-Power BI (Import mode) — 4 dashboards: Usage Trends, User Journeys, Feature Adoption, Error Patterns
-   (Gemini AI insight narratives: planned next)
+Power BI (Import mode) — 5 pages: Usage Trends, User Journeys, Feature Adoption, Error Patterns, AI Insights
 ```
 
 ## One remaining deliberate substitution, and one now resolved
@@ -46,6 +46,7 @@ The mid-term work was done in a Databricks Free Edition workspace under a differ
 | `01_ingestion.py` | `events_raw`, `events_enriched` | Schema validation, dedup on natural key, sessionization via window functions |
 | `02_aggregations.py` | `session_summary`, `feature_adoption_daily`, `error_summary_daily` | Matches the proposal's aggregation table list exactly |
 | `03_data_quality.py` | `qa_data_quality_results` | Great Expectations checks (via Pandas — see QA report for why) |
+| `04_ai_insights.py` | `ai_insights_weekly` | 3 Gemini scenarios + relevance scoring — see [qa-report.md](qa-report.md) and [ai-prompt-log.md](ai-prompt-log.md) |
 
 ## Validated at scale
 

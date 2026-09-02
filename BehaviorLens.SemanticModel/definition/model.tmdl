@@ -19,6 +19,7 @@ ref table feature_adoption_daily
 ref table error_summary_daily
 ref table events_enriched
 ref table DimDate
+ref table ai_insights_weekly
 
 ref cultureInfo en-US
 
