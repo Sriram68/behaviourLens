@@ -1,6 +1,6 @@
 # BehaviorLens
 
-Lightweight behavioral analytics platform: JS event SDK → Azure Functions ingestion → Blob Storage → Databricks pipeline → Power BI dashboards → (AI insights next).
+Lightweight behavioral analytics platform: JS event SDK → Azure Functions ingestion → Blob Storage → Databricks pipeline (incl. Gemini AI insights) → Power BI dashboards.
 
 See [S3-C-01_BehaviorLens_Proposal.md](S3-C-01_BehaviorLens_Proposal.md) for the full proposal.
 
@@ -10,18 +10,19 @@ See [S3-C-01_BehaviorLens_Proposal.md](S3-C-01_BehaviorLens_Proposal.md) for the
 - [docs/event-schema.md](docs/event-schema.md) — event schema reference, all 10 tracked events
 - [docs/qa-report.md](docs/qa-report.md) — test results, coverage, data quality checks, scale test results, bugs found and fixed
 - [docs/powerbi-guide.md](docs/powerbi-guide.md) — Power BI semantic model and report configuration
+- [docs/ai-prompt-log.md](docs/ai-prompt-log.md) — Gemini prompt versions and relevance scores
 
 ## Structure
 
 - `sdk/` — framework-agnostic JS event tracking SDK (batching, session/user IDs, schema validation)
 - `demo-app/` — minimal demo app firing 10+ events across 3 flows (login/onboarding, feature usage, error/recovery)
 - `azure-function/` — Python HTTP-triggered Function that receives batched events and writes NDJSON to Blob Storage
-- `databricks/notebooks/` — ingestion, enrichment, and aggregation notebooks
+- `databricks/notebooks/` — ingestion, enrichment, aggregation, and AI insights notebooks (registered as the "BehaviorLens Pipeline" Databricks Job)
 - `databricks/sync_raw_events.py` — syncs raw-events blobs into the Unity Catalog Volume
 - `qa/` — Great Expectations data validation suite + synthetic load generator
 - `e2e/` — Playwright E2E tests covering all 3 flows against the live Function
-- `BehaviorLens.pbip` — Power BI project (4 dashboards); see `docs/powerbi-guide.md`
-- `docs/` — architecture, event schema reference, QA reports, Power BI guide
+- `BehaviorLens.pbip` — Power BI project (5 pages, incl. AI Insights); see `docs/powerbi-guide.md`
+- `docs/` — architecture, event schema reference, QA reports, Power BI guide, AI prompt log
 
 ## Note on Azure Function hosting
 
