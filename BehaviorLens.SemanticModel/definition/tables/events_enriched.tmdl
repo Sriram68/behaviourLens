@@ -1,0 +1,151 @@
+table events_enriched
+	lineageTag: 855420cb-93de-4ad2-823b-f75ef3b96468
+
+	measure 'Sessions per Step' = DISTINCTCOUNT(events_enriched[sessionId])
+		formatString: #,##0
+		lineageTag: d10d46d1-9cdb-4877-b96a-a0057d9dc206
+
+	measure 'Total Events' = COUNTROWS(events_enriched)
+		formatString: #,##0
+		lineageTag: 7d4a836c-827e-4357-a809-e1183a7fd2e1
+
+	column eventName
+		dataType: string
+		lineageTag: 7fbe1efe-c414-4ca3-8796-1cd4124ade23
+		summarizeBy: none
+		sourceColumn: eventName
+
+		annotation SummarizationSetBy = Automatic
+
+	column pageUrl
+		dataType: string
+		lineageTag: 9a2db678-b0fa-46ca-a03d-537666b999af
+		summarizeBy: none
+		sourceColumn: pageUrl
+
+		annotation SummarizationSetBy = Automatic
+
+	column properties
+		dataType: string
+		lineageTag: d81fb7b7-9ac4-4883-a476-e3cb02da995c
+		summarizeBy: none
+		sourceColumn: properties
+
+		annotation SummarizationSetBy = Automatic
+
+	column sessionId
+		dataType: string
+		lineageTag: bda1c89b-e461-4cc6-9a7e-9a0d983906ab
+		summarizeBy: none
+		sourceColumn: sessionId
+
+		annotation SummarizationSetBy = Automatic
+
+	column timestamp
+		dataType: string
+		lineageTag: 1c2ecb07-195e-47ce-907a-a3d86b2cb38e
+		summarizeBy: none
+		sourceColumn: timestamp
+
+		annotation SummarizationSetBy = Automatic
+
+	column userId
+		dataType: string
+		lineageTag: 1215d76b-f88a-4f42-bfff-bac43f20ba9a
+		summarizeBy: none
+		sourceColumn: userId
+
+		annotation SummarizationSetBy = Automatic
+
+	column event_timestamp
+		dataType: dateTime
+		formatString: General Date
+		lineageTag: 180d5cbf-f3d9-4a5b-a5d6-f4ea3de4bb94
+		summarizeBy: none
+		sourceColumn: event_timestamp
+
+		annotation SummarizationSetBy = Automatic
+
+	column ingestion_ts
+		dataType: dateTime
+		formatString: General Date
+		lineageTag: c79b15b3-2b69-4b1e-88b9-0bdaab67e068
+		summarizeBy: none
+		sourceColumn: ingestion_ts
+
+		annotation SummarizationSetBy = Automatic
+
+	column session_event_seq
+		dataType: int64
+		formatString: 0
+		lineageTag: 0a4ed329-c549-41d2-844a-232b652620b3
+		summarizeBy: sum
+		sourceColumn: session_event_seq
+
+		annotation SummarizationSetBy = Automatic
+
+	column session_start_ts
+		dataType: dateTime
+		formatString: General Date
+		lineageTag: b5a13adb-4a4b-4954-82ec-b87365937939
+		summarizeBy: none
+		sourceColumn: session_start_ts
+
+		annotation SummarizationSetBy = Automatic
+
+	column session_end_ts
+		dataType: dateTime
+		formatString: General Date
+		lineageTag: 544dc7bd-35fa-47f8-b026-1ef753005a68
+		summarizeBy: none
+		sourceColumn: session_end_ts
+
+		annotation SummarizationSetBy = Automatic
+
+	column session_duration_seconds
+		dataType: int64
+		formatString: 0
+		lineageTag: 7ae536ec-68d1-4052-8445-30c3b3ffc385
+		summarizeBy: sum
+		sourceColumn: session_duration_seconds
+
+		annotation SummarizationSetBy = Automatic
+
+	column event_date = DATE(YEAR(events_enriched[event_timestamp]), MONTH(events_enriched[event_timestamp]), DAY(events_enriched[event_timestamp]))
+		dataType: dateTime
+		formatString: Long Date
+		lineageTag: f3eec992-c955-45ae-a3b8-427ec4229af6
+
+	column flow =
+			SWITCH(TRUE(),
+			  events_enriched[eventName] IN {"login_attempt","login_success","onboarding_step_complete"}, "Login & Onboarding",
+			  events_enriched[eventName] IN {"feature_click","search_query","filter_applied","export_triggered"}, "Feature Usage",
+			  events_enriched[eventName] IN {"api_error","page_not_found","retry_attempt"}, "Error & Recovery",
+			  "Other"
+			)
+		dataType: string
+		lineageTag: 95f73d41-8146-4afc-9ed3-12f5870e0f7a
+
+	column flow_step =
+			SWITCH(events_enriched[eventName],
+			  "login_attempt", 1, "login_success", 2, "onboarding_step_complete", 3,
+			  "feature_click", 1, "search_query", 2, "filter_applied", 3, "export_triggered", 4,
+			  "api_error", 1, "page_not_found", 2, "retry_attempt", 3,
+			  0
+			)
+		dataType: int64
+		formatString: 0
+		displayFolder: Journey
+		lineageTag: 20df3166-3d1a-4a61-a0d9-b07d83a82e35
+
+	partition events_enriched = m
+		mode: import
+		source =
+				let
+				    Source = DatabricksMultiCloud.Catalogs("dbc-6051f46c-210c.cloud.databricks.com", "/sql/1.0/warehouses/b785449970d46af7", [Catalog=null, Database=null, EnableAutomaticProxyDiscovery=null]),
+				    workspace_Database = Source{[Name="workspace",Kind="Database"]}[Data],
+				    default_Schema = workspace_Database{[Name="default",Kind="Schema"]}[Data],
+				    events_enriched_Table = default_Schema{[Name="events_enriched",Kind="Table"]}[Data]
+				in
+				    events_enriched_Table
+

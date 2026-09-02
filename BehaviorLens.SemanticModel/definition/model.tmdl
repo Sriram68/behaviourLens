@@ -1,0 +1,24 @@
+model Model
+	culture: en-US
+	defaultPowerBIDataSourceVersion: powerBI_V3
+	sourceQueryCulture: en-IN
+	dataAccessOptions
+		legacyRedirects
+		returnErrorValuesAsNull
+
+annotation PBI_QueryOrder = ["session_summary","feature_adoption_daily","error_summary_daily","events_enriched"]
+
+annotation __PBI_TimeIntelligenceEnabled = 1
+
+annotation PBIDesktopVersion = 2.144.1378.0 (25.06)+cba1e61f16ea36d44901f06fa446299040122394
+
+annotation PBI_ProTooling = ["MCP-PBIModeling","DevMode"]
+
+ref table session_summary
+ref table feature_adoption_daily
+ref table error_summary_daily
+ref table events_enriched
+ref table DimDate
+
+ref cultureInfo en-US
+

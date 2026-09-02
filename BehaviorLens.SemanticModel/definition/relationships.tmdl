@@ -1,0 +1,21 @@
+relationship AutoDetected_79bfa607-ad9b-4ed2-9564-ec84020b6b5d
+	isActive: false
+	fromColumn: events_enriched.sessionId
+	toColumn: session_summary.sessionId
+
+relationship DimDate_SessionSummary
+	fromColumn: session_summary.session_date
+	toColumn: DimDate.Date
+
+relationship DimDate_FeatureAdoption
+	fromColumn: feature_adoption_daily.event_date
+	toColumn: DimDate.Date
+
+relationship DimDate_ErrorSummary
+	fromColumn: error_summary_daily.event_date
+	toColumn: DimDate.Date
+
+relationship DimDate_EventsEnriched
+	fromColumn: events_enriched.event_date
+	toColumn: DimDate.Date
+

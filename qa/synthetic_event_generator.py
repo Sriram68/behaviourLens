@@ -38,19 +38,19 @@ EVENT_PROPERTIES = {
 }
 
 
-def random_timestamp():
-    delta_seconds = random.randint(0, DAYS_BACK * 24 * 3600)
+def random_timestamp(days_back):
+    delta_seconds = random.randint(0, days_back * 24 * 3600)
     return (datetime.now(timezone.utc) - timedelta(seconds=delta_seconds)).strftime("%Y-%m-%dT%H:%M:%S.%f")[:-3] + "Z"
 
 
-def build_event(user_id, session_id):
+def build_event(user_id, session_id, days_back):
     flow = random.choices(list(FLOW_WEIGHTS.keys()), weights=list(FLOW_WEIGHTS.values()))[0]
     event_name = random.choice(FLOW_EVENTS[flow])
     return {
         "eventName": event_name,
         "userId": user_id,
         "sessionId": session_id,
-        "timestamp": random_timestamp(),
+        "timestamp": random_timestamp(days_back),
         "pageUrl": "/synthetic-load-test",
         "properties": EVENT_PROPERTIES[event_name](),
     }
@@ -68,8 +68,10 @@ def send_batch(events):
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--total-events", type=int, default=800)
+    parser.add_argument("--days-back", type=int, default=DAYS_BACK)
     args = parser.parse_args()
     total_events = args.total_events
+    days_back = args.days_back
 
     users = [str(uuid.uuid4()) for _ in range(NUM_USERS)]
     sessions = {u: str(uuid.uuid4()) for u in users}
@@ -94,7 +96,7 @@ def main():
         # 10% chance to start a new session for this user
         if random.random() < 0.1:
             sessions[user_id] = str(uuid.uuid4())
-        batch.append(build_event(user_id, sessions[user_id]))
+        batch.append(build_event(user_id, sessions[user_id], days_back))
 
         if len(batch) >= BATCH_SIZE:
             flush(batch)

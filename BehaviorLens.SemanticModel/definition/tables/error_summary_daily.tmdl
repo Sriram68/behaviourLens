@@ -1,0 +1,74 @@
+table error_summary_daily
+	lineageTag: 0b848ef8-9734-419b-b3b0-d99c2dcb2eaf
+
+	measure 'Total Errors' = SUM(error_summary_daily[event_count])
+		formatString: #,##0
+		lineageTag: dd6ea8af-be24-4515-9496-c7e1c82fa6bc
+
+	measure 'Affected Sessions' = SUM(error_summary_daily[distinct_sessions])
+		formatString: #,##0
+		lineageTag: 8c37f4fd-0c9c-4e38-8bbb-d3f6bd83aec9
+
+	measure 'Error Rank' = RANKX(ALL(error_summary_daily[eventName]), CALCULATE(SUM(error_summary_daily[event_count])), , DESC, Dense)
+		formatString: 0
+		lineageTag: 4bcf9166-7e44-45d0-8fa1-e0d118b838a0
+
+	column event_date
+		dataType: dateTime
+		formatString: Long Date
+		lineageTag: ad2e2216-372b-4458-b359-68a0c72d09da
+		summarizeBy: none
+		sourceColumn: event_date
+
+		annotation SummarizationSetBy = Automatic
+
+		annotation UnderlyingDateTimeDataType = Date
+
+	column eventName
+		dataType: string
+		lineageTag: a8f3649a-43bd-439d-a7b3-3828817c7dfe
+		summarizeBy: none
+		sourceColumn: eventName
+
+		annotation SummarizationSetBy = Automatic
+
+	column event_count
+		dataType: int64
+		formatString: 0
+		lineageTag: 7f6ec1c1-1b19-40c3-87ab-6b13943e3517
+		summarizeBy: sum
+		sourceColumn: event_count
+
+		annotation SummarizationSetBy = Automatic
+
+	column distinct_users
+		dataType: int64
+		formatString: 0
+		lineageTag: 16da8199-eaeb-430a-be4a-143fa6d92876
+		summarizeBy: sum
+		sourceColumn: distinct_users
+
+		annotation SummarizationSetBy = Automatic
+
+	column distinct_sessions
+		dataType: int64
+		formatString: 0
+		lineageTag: 89247860-699e-4a11-aea3-18e075ed2c03
+		summarizeBy: sum
+		sourceColumn: distinct_sessions
+
+		annotation SummarizationSetBy = Automatic
+
+	partition error_summary_daily = m
+		mode: import
+		source =
+				let
+				    Source = DatabricksMultiCloud.Catalogs("dbc-6051f46c-210c.cloud.databricks.com", "/sql/1.0/warehouses/b785449970d46af7", [Catalog=null, Database=null, EnableAutomaticProxyDiscovery=null]),
+				    workspace_Database = Source{[Name="workspace",Kind="Database"]}[Data],
+				    default_Schema = workspace_Database{[Name="default",Kind="Schema"]}[Data],
+				    error_summary_daily_Table = default_Schema{[Name="error_summary_daily",Kind="Table"]}[Data]
+				in
+				    error_summary_daily_Table
+
+	annotation PBI_ResultType = Table
+

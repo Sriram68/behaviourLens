@@ -1,0 +1,11 @@
+{
+  "$schema": "https://developer.microsoft.com/json-schemas/fabric/gitIntegration/platformProperties/2.0.0/schema.json",
+  "metadata": {
+    "type": "SemanticModel",
+    "displayName": "BehaviorLens"
+  },
+  "config": {
+    "version": "2.0",
+    "logicalId": "0750a75b-1e9b-4fcd-b34c-ff7bd2ec70f3"
+  }
+}

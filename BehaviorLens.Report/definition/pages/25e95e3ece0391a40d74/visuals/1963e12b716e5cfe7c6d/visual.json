@@ -1,0 +1,54 @@
+{
+  "$schema": "https://developer.microsoft.com/json-schemas/fabric/item/report/definition/visualContainer/2.1.0/schema.json",
+  "name": "1963e12b716e5cfe7c6d",
+  "position": {
+    "x": 840,
+    "y": 498,
+    "z": 1005,
+    "height": 198,
+    "width": 416
+  },
+  "visual": {
+    "visualType": "columnChart",
+    "query": {
+      "queryState": {
+        "Category": {
+          "projections": [
+            {
+              "field": {
+                "Column": {
+                  "Expression": {
+                    "SourceRef": {
+                      "Entity": "session_summary"
+                    }
+                  },
+                  "Property": "distinct_event_types"
+                }
+              },
+              "queryRef": "session_summary.distinct_event_types",
+              "nativeQueryRef": "distinct_event_types"
+            }
+          ]
+        },
+        "Y": {
+          "projections": [
+            {
+              "field": {
+                "Measure": {
+                  "Expression": {
+                    "SourceRef": {
+                      "Entity": "session_summary"
+                    }
+                  },
+                  "Property": "Total Sessions"
+                }
+              },
+              "queryRef": "session_summary.Total Sessions",
+              "nativeQueryRef": "Total Sessions"
+            }
+          ]
+        }
+      }
+    }
+  }
+}

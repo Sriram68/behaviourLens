@@ -1,0 +1,59 @@
+table feature_adoption_daily
+	lineageTag: d3f77716-8e9e-4a24-88f6-5b0e48f7a864
+
+	measure 'Feature Events' = SUM(feature_adoption_daily[event_count])
+		formatString: #,##0
+		lineageTag: 9bb27420-315d-4e55-9231-0aadcb57eb58
+
+	measure 'Feature Adoption Users' = SUM(feature_adoption_daily[distinct_users])
+		formatString: #,##0
+		lineageTag: 7016decf-f9f2-477b-9a20-38a86aad98c5
+
+	column event_date
+		dataType: dateTime
+		formatString: Long Date
+		lineageTag: c229d9a9-fb2e-4861-9802-e6551384aa1c
+		summarizeBy: none
+		sourceColumn: event_date
+
+		annotation SummarizationSetBy = Automatic
+
+		annotation UnderlyingDateTimeDataType = Date
+
+	column eventName
+		dataType: string
+		lineageTag: f0aa1d03-153a-480c-90f7-5e7890ff1c99
+		summarizeBy: none
+		sourceColumn: eventName
+
+		annotation SummarizationSetBy = Automatic
+
+	column event_count
+		dataType: int64
+		formatString: 0
+		lineageTag: a7e08d9b-86da-4b22-a4ca-9cf817b0d24a
+		summarizeBy: sum
+		sourceColumn: event_count
+
+		annotation SummarizationSetBy = Automatic
+
+	column distinct_users
+		dataType: int64
+		formatString: 0
+		lineageTag: 644272f5-a89b-4f83-a3f7-da9c52501ca2
+		summarizeBy: sum
+		sourceColumn: distinct_users
+
+		annotation SummarizationSetBy = Automatic
+
+	partition feature_adoption_daily = m
+		mode: import
+		source =
+				let
+				    Source = DatabricksMultiCloud.Catalogs("dbc-6051f46c-210c.cloud.databricks.com", "/sql/1.0/warehouses/b785449970d46af7", [Catalog=null, Database=null, EnableAutomaticProxyDiscovery=null]),
+				    workspace_Database = Source{[Name="workspace",Kind="Database"]}[Data],
+				    default_Schema = workspace_Database{[Name="default",Kind="Schema"]}[Data],
+				    feature_adoption_daily_Table = default_Schema{[Name="feature_adoption_daily",Kind="Table"]}[Data]
+				in
+				    feature_adoption_daily_Table
+

@@ -1,0 +1,96 @@
+table session_summary
+	lineageTag: 575faf88-d208-4746-a8ee-b5f513640f46
+
+	measure 'Total Sessions' = COUNTROWS(session_summary)
+		formatString: #,##0
+		lineageTag: 45bcb26a-c17a-4664-998b-2f61dba6d3db
+
+	measure 'Active Users' = DISTINCTCOUNT(session_summary[userId])
+		formatString: #,##0
+		lineageTag: ffcb4b9e-287f-4268-80e3-e7a1af6eba8d
+
+	measure 'Avg Session Duration (min)' = DIVIDE(AVERAGE(session_summary[session_duration_seconds]), 60)
+		formatString: #,##0.0
+		lineageTag: 8ad32894-260e-4f41-b6cf-e3bab21e7d59
+
+	measure 'Avg Events per Session' = AVERAGE(session_summary[event_count])
+		formatString: #,##0.0
+		lineageTag: efaf08d6-d4d2-49dc-b90c-f4da2aced1d0
+
+	column sessionId
+		dataType: string
+		lineageTag: c72fef2b-f8d4-4626-b9a3-2d938b1c3fdf
+		summarizeBy: none
+		sourceColumn: sessionId
+
+		annotation SummarizationSetBy = Automatic
+
+	column userId
+		dataType: string
+		lineageTag: e585df1b-1018-41b4-8006-a8a825c4d440
+		summarizeBy: none
+		sourceColumn: userId
+
+		annotation SummarizationSetBy = Automatic
+
+	column session_start_ts
+		dataType: dateTime
+		formatString: General Date
+		lineageTag: aa218892-ee11-4a5a-94fb-7508f120b6eb
+		summarizeBy: none
+		sourceColumn: session_start_ts
+
+		annotation SummarizationSetBy = Automatic
+
+	column session_end_ts
+		dataType: dateTime
+		formatString: General Date
+		lineageTag: d799fb23-8d67-412f-b952-a64caa5d1c89
+		summarizeBy: none
+		sourceColumn: session_end_ts
+
+		annotation SummarizationSetBy = Automatic
+
+	column session_duration_seconds
+		dataType: int64
+		formatString: 0
+		lineageTag: e60f6a8b-553d-498e-bdd0-c652bff1df76
+		summarizeBy: sum
+		sourceColumn: session_duration_seconds
+
+		annotation SummarizationSetBy = Automatic
+
+	column event_count
+		dataType: int64
+		formatString: 0
+		lineageTag: 77141402-08ff-481f-9487-67ec4a28a4fd
+		summarizeBy: sum
+		sourceColumn: event_count
+
+		annotation SummarizationSetBy = Automatic
+
+	column distinct_event_types
+		dataType: int64
+		formatString: 0
+		lineageTag: 189eaf83-974b-4e2f-b4f5-dfd23f8dd604
+		summarizeBy: sum
+		sourceColumn: distinct_event_types
+
+		annotation SummarizationSetBy = Automatic
+
+	column session_date = DATE(YEAR(session_summary[session_start_ts]), MONTH(session_summary[session_start_ts]), DAY(session_summary[session_start_ts]))
+		dataType: dateTime
+		formatString: Long Date
+		lineageTag: a0793332-0781-414d-9308-0724e5baaa0f
+
+	partition session_summary = m
+		mode: import
+		source =
+				let
+				    Source = DatabricksMultiCloud.Catalogs("dbc-6051f46c-210c.cloud.databricks.com", "/sql/1.0/warehouses/b785449970d46af7", [Catalog=null, Database=null, EnableAutomaticProxyDiscovery=null]),
+				    workspace_Database = Source{[Name="workspace",Kind="Database"]}[Data],
+				    default_Schema = workspace_Database{[Name="default",Kind="Schema"]}[Data],
+				    session_summary_Table = default_Schema{[Name="session_summary",Kind="Table"]}[Data]
+				in
+				    session_summary_Table
+

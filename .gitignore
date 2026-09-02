@@ -19,3 +19,6 @@ coverage/
 htmlcov/
 test-results/
 playwright-report/
+*.pbix
+**/.pbi/cache.abf
+**/.pbi/localSettings.json

@@ -1,0 +1,11 @@
+{
+  "$schema": "https://developer.microsoft.com/json-schemas/fabric/gitIntegration/platformProperties/2.0.0/schema.json",
+  "metadata": {
+    "type": "Report",
+    "displayName": "BehaviorLens"
+  },
+  "config": {
+    "version": "2.0",
+    "logicalId": "e1c015f8-e3fb-40e2-9bfa-a6959116e5dd"
+  }
+}

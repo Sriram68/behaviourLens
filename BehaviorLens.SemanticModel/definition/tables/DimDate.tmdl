@@ -1,0 +1,63 @@
+table DimDate
+	lineageTag: 7dfb0b42-12a9-4f34-bed4-e59256918654
+	dataCategory: Time
+
+	column Date
+		dataType: dateTime
+		isUnique
+		formatString: Long Date
+		lineageTag: ef62a53b-0985-4027-be44-8ad6ab15c35e
+		sourceColumn: Date
+
+	column Year
+		dataType: int64
+		formatString: 0
+		lineageTag: f8ace5c0-1a2b-4f40-b9b7-3b91a7aff411
+		sourceColumn: Year
+
+	column MonthNo
+		dataType: int64
+		isHidden
+		formatString: 0
+		lineageTag: 726e115e-d62d-4da5-8250-ecc794e41fdf
+		sourceColumn: MonthNo
+
+	column Month
+		dataType: string
+		lineageTag: 6bcbc8da-47f5-49d9-9052-4ecc059582c3
+		sourceColumn: Month
+		sortByColumn: MonthNo
+
+	column DayOfWeek
+		dataType: string
+		lineageTag: d09850f1-e956-41ce-80ce-bbb9024bec28
+		sourceColumn: DayOfWeek
+		sortByColumn: DayOfWeekNo
+
+	column DayOfWeekNo
+		dataType: int64
+		isHidden
+		formatString: 0
+		lineageTag: 9f1f3a04-6222-470b-9403-e6424d8feeef
+		sourceColumn: DayOfWeekNo
+
+	partition DimDate = m
+		mode: import
+		source =
+				let
+				    StartDate = #date(2026,1,1),
+				    EndDate = #date(2026,12,31),
+				    DayCount = Duration.Days(EndDate - StartDate) + 1,
+				    Source = List.Dates(StartDate, DayCount, #duration(1,0,0,0)),
+				    #"Converted to Table" = Table.FromList(Source, Splitter.SplitByNothing(), {"Date"}, null, ExtraValues.Error),
+				    #"Changed Type" = Table.TransformColumnTypes(#"Converted to Table",{{"Date", type date}}),
+				    #"Added Year" = Table.AddColumn(#"Changed Type", "Year", each Date.Year([Date]), Int64.Type),
+				    #"Added MonthNo" = Table.AddColumn(#"Added Year", "MonthNo", each Date.Month([Date]), Int64.Type),
+				    #"Added Month" = Table.AddColumn(#"Added MonthNo", "Month", each Date.ToText([Date], "MMM"), type text),
+				    #"Added DayOfWeekNo" = Table.AddColumn(#"Added Month", "DayOfWeekNo", each Date.DayOfWeek([Date], Day.Monday) + 1, Int64.Type),
+				    #"Added DayOfWeek" = Table.AddColumn(#"Added DayOfWeekNo", "DayOfWeek", each Date.ToText([Date], "ddd"), type text)
+				in
+				    #"Added DayOfWeek"
+
+	annotation __PBI_TableSourceType = M
+
