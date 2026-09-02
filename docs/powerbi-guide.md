@@ -16,6 +16,7 @@ Source tables (Import mode, one partition each from the corresponding Delta tabl
 | `events_enriched` | 1 row per event | `eventName`, `sessionId`, `event_timestamp`, `flow` *(calc.)*, `flow_step` *(calc.)* |
 | `feature_adoption_daily` | 1 row per day × feature event | `event_date`, `eventName`, `event_count`, `distinct_users` |
 | `error_summary_daily` | 1 row per day × error event | `event_date`, `eventName`, `event_count`, `distinct_sessions` |
+| `ai_insights_weekly` | 1 row per Gemini scenario per run | `scenario`, `prompt_version`, `narrative`, `relevance_score`, `generated_at` |
 
 Plus a calculated `DimDate` table (full-year calendar, `Date`/`Year`/`Month`/`DayOfWeek`, `Month` and `DayOfWeek` both `sortByColumn`-ordered chronologically rather than alphabetically) — the single shared date dimension all 4 fact tables relate to (`Many` → `DimDate[Date]` `One`, all one-directional).
 
@@ -30,12 +31,13 @@ Key measures (session_summary/events_enriched/feature_adoption_daily/error_summa
 
 ## Report pages (`BehaviorLens.Report/`)
 
-All 4 pages share a top row (KPI card + a synced `Date Range` between-slicer, `DateSync` sync group) and the `BehaviorLensExecutive` custom theme.
+The 4 analytics pages share a top row (KPI card + a synced `Date Range` between-slicer, `DateSync` sync group) and the `BehaviorLensExecutive` custom theme; the AI Insights page carries its own KPI row against `ai_insights_weekly` instead (no date slicer — narratives are generated per pipeline run, not date-filterable).
 
 1. **Usage Trends** — Active Users and Avg Session Duration trend lines (categorical date axis — see gotcha below), Sessions by Day of Week, a sortable table of longest sessions, and Sessions by Engagement Depth.
 2. **User Journeys** — one funnel per flow (`Category` = `flow_step`, pre-filtered to that flow), plus Event Volume by Flow and Type and a Session Share by Flow donut.
 3. **Feature Adoption** — a compact eventName × Month heatmap (`pivotTable` with a `linearGradient2` conditional-format fill), Feature Events and Feature Adoption Users by month, and 3 more breakdowns (by eventName, by date, by day of week).
 4. **Error Patterns** — ranked bar chart of errors by type, an error-share donut, and 3 more breakdowns (trend, affected sessions, day of week).
+5. **AI Insights** — a table of `ai_insights_weekly` narratives (scenario, narrative text, relevance score) plus a 4-KPI row: Avg Relevance Score, Min Relevance Score, Scenarios Generated, Last Generated.
 
 ### Gotchas hit while building this (documented so they don't recur)
 
@@ -46,7 +48,7 @@ All 4 pages share a top row (KPI card + a synced `Date Range` between-slicer, `D
 
 ## Databricks pipeline (for reference)
 
-The pipeline behind this model is registered as a real Databricks Job (**Workflows → Jobs → "BehaviorLens Pipeline"**, 3 tasks: `ingestion` → `aggregations` → `data_quality`), not just ad-hoc API runs — triggerable from the UI (**Run now**) after any new sync of raw events into the `raw_events` Volume (`databricks/sync_raw_events.py`).
+The pipeline behind this model is registered as a real Databricks Job (**Workflows → Jobs → "BehaviorLens Pipeline"**, 4 tasks: `ingestion` → `aggregations` → `data_quality` → `ai_insights`), not just ad-hoc API runs — triggerable from the UI (**Run now**) after any new sync of raw events into the `raw_events` Volume (`databricks/sync_raw_events.py`).
 
 ## Known caveat
 
