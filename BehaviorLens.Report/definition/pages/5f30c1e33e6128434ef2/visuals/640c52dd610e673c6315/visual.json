@@ -1,0 +1,50 @@
+{
+  "$schema": "https://developer.microsoft.com/json-schemas/fabric/item/report/definition/visualContainer/2.1.0/schema.json",
+  "name": "640c52dd610e673c6315",
+  "position": {
+    "x": 24,
+    "y": 24,
+    "z": 1000,
+    "height": 130,
+    "width": 980
+  },
+  "visual": {
+    "visualType": "cardVisual",
+    "query": {
+      "queryState": {
+        "Data": {
+          "projections": [
+            {
+              "field": {
+                "Measure": {
+                  "Expression": {
+                    "SourceRef": {
+                      "Entity": "error_summary_daily"
+                    }
+                  },
+                  "Property": "Total Errors"
+                }
+              },
+              "queryRef": "error_summary_daily.Total Errors",
+              "nativeQueryRef": "Total Errors"
+            },
+            {
+              "field": {
+                "Measure": {
+                  "Expression": {
+                    "SourceRef": {
+                      "Entity": "error_summary_daily"
+                    }
+                  },
+                  "Property": "Affected Sessions"
+                }
+              },
+              "queryRef": "error_summary_daily.Affected Sessions",
+              "nativeQueryRef": "Affected Sessions"
+            }
+          ]
+        }
+      }
+    }
+  }
+}

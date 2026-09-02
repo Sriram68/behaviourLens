@@ -1,0 +1,73 @@
+{
+  "$schema": "https://developer.microsoft.com/json-schemas/fabric/item/report/definition/visualContainer/2.1.0/schema.json",
+  "name": "c9d007a42ec51596f1e2",
+  "position": {
+    "x": 24,
+    "y": 418,
+    "z": 1004,
+    "height": 278,
+    "width": 604
+  },
+  "visual": {
+    "visualType": "clusteredColumnChart",
+    "query": {
+      "queryState": {
+        "Category": {
+          "projections": [
+            {
+              "field": {
+                "Column": {
+                  "Expression": {
+                    "SourceRef": {
+                      "Entity": "events_enriched"
+                    }
+                  },
+                  "Property": "flow"
+                }
+              },
+              "queryRef": "events_enriched.flow",
+              "nativeQueryRef": "flow",
+              "active": true
+            }
+          ]
+        },
+        "Series": {
+          "projections": [
+            {
+              "field": {
+                "Column": {
+                  "Expression": {
+                    "SourceRef": {
+                      "Entity": "events_enriched"
+                    }
+                  },
+                  "Property": "eventName"
+                }
+              },
+              "queryRef": "events_enriched.eventName",
+              "nativeQueryRef": "eventName"
+            }
+          ]
+        },
+        "Y": {
+          "projections": [
+            {
+              "field": {
+                "Measure": {
+                  "Expression": {
+                    "SourceRef": {
+                      "Entity": "events_enriched"
+                    }
+                  },
+                  "Property": "Total Events"
+                }
+              },
+              "queryRef": "events_enriched.Total Events",
+              "nativeQueryRef": "Total Events"
+            }
+          ]
+        }
+      }
+    }
+  }
+}

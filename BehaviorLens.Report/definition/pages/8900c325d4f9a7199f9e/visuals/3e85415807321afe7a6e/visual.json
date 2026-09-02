@@ -1,0 +1,55 @@
+{
+  "$schema": "https://developer.microsoft.com/json-schemas/fabric/item/report/definition/visualContainer/2.1.0/schema.json",
+  "name": "3e85415807321afe7a6e",
+  "position": {
+    "x": 912,
+    "y": 172,
+    "z": 1003,
+    "height": 230,
+    "width": 344
+  },
+  "visual": {
+    "visualType": "columnChart",
+    "query": {
+      "queryState": {
+        "Category": {
+          "projections": [
+            {
+              "field": {
+                "Column": {
+                  "Expression": {
+                    "SourceRef": {
+                      "Entity": "DimDate"
+                    }
+                  },
+                  "Property": "Month"
+                }
+              },
+              "queryRef": "DimDate.Month",
+              "nativeQueryRef": "Month",
+              "active": true
+            }
+          ]
+        },
+        "Y": {
+          "projections": [
+            {
+              "field": {
+                "Measure": {
+                  "Expression": {
+                    "SourceRef": {
+                      "Entity": "feature_adoption_daily"
+                    }
+                  },
+                  "Property": "Feature Adoption Users"
+                }
+              },
+              "queryRef": "feature_adoption_daily.Feature Adoption Users",
+              "nativeQueryRef": "Feature Adoption Users"
+            }
+          ]
+        }
+      }
+    }
+  }
+}

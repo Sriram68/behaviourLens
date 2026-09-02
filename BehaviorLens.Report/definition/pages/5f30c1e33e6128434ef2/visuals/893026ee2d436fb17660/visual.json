@@ -1,0 +1,72 @@
+{
+  "$schema": "https://developer.microsoft.com/json-schemas/fabric/item/report/definition/visualContainer/2.1.0/schema.json",
+  "name": "893026ee2d436fb17660",
+  "position": {
+    "x": 440,
+    "y": 418,
+    "z": 1004,
+    "height": 198,
+    "width": 400
+  },
+  "visual": {
+    "visualType": "clusteredBarChart",
+    "query": {
+      "queryState": {
+        "Category": {
+          "projections": [
+            {
+              "field": {
+                "Column": {
+                  "Expression": {
+                    "SourceRef": {
+                      "Entity": "error_summary_daily"
+                    }
+                  },
+                  "Property": "eventName"
+                }
+              },
+              "queryRef": "error_summary_daily.eventName",
+              "nativeQueryRef": "eventName",
+              "active": true
+            }
+          ]
+        },
+        "Y": {
+          "projections": [
+            {
+              "field": {
+                "Measure": {
+                  "Expression": {
+                    "SourceRef": {
+                      "Entity": "error_summary_daily"
+                    }
+                  },
+                  "Property": "Affected Sessions"
+                }
+              },
+              "queryRef": "error_summary_daily.Affected Sessions",
+              "nativeQueryRef": "Affected Sessions"
+            }
+          ]
+        }
+      },
+      "sortDefinition": {
+        "sort": [
+          {
+            "field": {
+              "Measure": {
+                "Expression": {
+                  "SourceRef": {
+                    "Entity": "error_summary_daily"
+                  }
+                },
+                "Property": "Affected Sessions"
+              }
+            },
+            "direction": "Descending"
+          }
+        ]
+      }
+    }
+  }
+}

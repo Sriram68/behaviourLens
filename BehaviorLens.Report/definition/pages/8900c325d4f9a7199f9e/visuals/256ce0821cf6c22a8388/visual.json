@@ -1,0 +1,55 @@
+{
+  "$schema": "https://developer.microsoft.com/json-schemas/fabric/item/report/definition/visualContainer/2.1.0/schema.json",
+  "name": "256ce0821cf6c22a8388",
+  "position": {
+    "x": 856,
+    "y": 418,
+    "z": 1006,
+    "height": 278,
+    "width": 400
+  },
+  "visual": {
+    "visualType": "columnChart",
+    "query": {
+      "queryState": {
+        "Category": {
+          "projections": [
+            {
+              "field": {
+                "Column": {
+                  "Expression": {
+                    "SourceRef": {
+                      "Entity": "DimDate"
+                    }
+                  },
+                  "Property": "DayOfWeek"
+                }
+              },
+              "queryRef": "DimDate.DayOfWeek",
+              "nativeQueryRef": "DayOfWeek",
+              "active": true
+            }
+          ]
+        },
+        "Y": {
+          "projections": [
+            {
+              "field": {
+                "Measure": {
+                  "Expression": {
+                    "SourceRef": {
+                      "Entity": "feature_adoption_daily"
+                    }
+                  },
+                  "Property": "Feature Events"
+                }
+              },
+              "queryRef": "feature_adoption_daily.Feature Events",
+              "nativeQueryRef": "Feature Events"
+            }
+          ]
+        }
+      }
+    }
+  }
+}
