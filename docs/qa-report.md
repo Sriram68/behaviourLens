@@ -22,6 +22,19 @@ Tests:       12 passed, 12 total
 Coverage:    85.36% stmts | 80% branch | 95.23% funcs | 90.78% lines
 ```
 
+### Bundle size
+
+Proposal target: <2KB gzipped. `sdk/src/behaviorlens.js` is a single dependency-free
+file, minified with `terser` and measured with `gzip`:
+
+```
+raw source:              4,296 bytes
+minified (terser -c -m): 2,236 bytes
+minified + gzipped:      1,045 bytes  (1.02 KB)
+```
+
+Well within target — reproducible via `npx terser sdk/src/behaviorlens.js -c -m | gzip -c | wc -c`.
+
 ## Azure Function test suite (`azure-function/tests/test_function_app.py`)
 
 6 tests covering: valid batch → 200 + correct blob write, bare-list payload handling, invalid JSON → 400, empty events → 400, missing `events` key → 400, and date-partitioned blob naming.
@@ -44,7 +57,7 @@ Coverage:    86% (function_app.py)
 - Final state: **12,001 events → 1,343 sessions, 930 feature-adoption day/event buckets, 593 error-summary day/event buckets**, spanning ~8 distinct clusters of days from January through September 2026.
 - Full pipeline (ingestion → aggregation → data quality) completes in **~2 minutes wall clock** on Databricks serverless compute at this volume.
 - All 15 Great Expectations checks still pass at this volume.
-- The pipeline is now also registered as a persistent Databricks Job ("BehaviorLens Pipeline", 3 tasks) under Workflows → Jobs, rather than only existing as ad-hoc API-submitted runs — re-runnable and inspectable from the Databricks UI.
+- The pipeline is now also registered as a persistent Databricks Job ("BehaviorLens Pipeline", 4 tasks: ingestion → aggregations → data_quality → ai_insights) under Workflows → Jobs, rather than only existing as ad-hoc API-submitted runs — re-runnable and inspectable from the Databricks UI.
 
 ## E2E test suite (`e2e/tests/`)
 
@@ -58,7 +71,7 @@ Coverage:    86% (function_app.py)
 3 passed (11.3s)
 ```
 
-Wired into CI as `e2e-tests` in `.github/workflows/ci.yml`, marked `continue-on-error: true` since it depends on live network access to Azure rather than being fully local/mocked like `sdk-tests` and `function-tests` — will promote to merge-blocking once proven stable over more runs.
+Wired into CI as `e2e-tests` in `.github/workflows/ci.yml`. Initially marked `continue-on-error: true` since it depends on live network access to Azure rather than being fully local/mocked like `sdk-tests` and `function-tests`; promoted to merge-blocking after multiple stable runs (including live re-runs during the Phase 6 regression pass) showed no flakiness.
 
 ## Bugs found and fixed during this QA pass
 

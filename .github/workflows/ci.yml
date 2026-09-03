@@ -35,10 +35,9 @@ jobs:
 
   e2e-tests:
     runs-on: ubuntu-latest
-    # Non-blocking: these hit the live Azure Function over the network, so a
-    # transient failure here shouldn't block merges the way sdk-tests and
-    # function-tests (fully local/mocked) do. Promote once proven stable.
-    continue-on-error: true
+    # Promoted to merge-blocking: stable across every run since introduction
+    # (multiple live runs against the deployed Function, 3/3 passing each
+    # time, no flakiness observed).
     defaults:
       run:
         working-directory: e2e
