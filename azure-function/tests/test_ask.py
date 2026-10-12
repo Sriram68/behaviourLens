@@ -79,16 +79,16 @@ def test_cte_name_cannot_shadow_a_qualified_table():
 # --- Gemini and Databricks calls --------------------------------------------------
 
 
-@patch("ask.requests.post")
-def test_call_gemini_sends_key_in_header_and_skips_thought_parts(mock_post, configured):
-    mock_post.return_value.json.return_value = {
-        "candidates": [{"content": {"parts": [{"text": "thinking...", "thought": True}, {"text": " answer "}]}}]
-    }
+@patch("ask.gemini.generate", return_value=("answer", "gemini-3.6-flash"))
+def test_call_gemini_uses_the_resilient_client(mock_generate, configured, monkeypatch):
     assert ask.call_gemini("hello", json_mode=True) == "answer"
-    _, kwargs = mock_post.call_args
-    assert kwargs["headers"] == {"x-goog-api-key": "test-key"}
-    assert kwargs["json"]["generationConfig"]["responseMimeType"] == "application/json"
-    assert "key=" not in mock_post.call_args.args[0]
+    args, kwargs = mock_generate.call_args
+    assert args == ("hello", "test-key")
+    assert kwargs["json_mode"] is True and kwargs["models"] is None and kwargs["attempts_per_model"] == 2
+
+    monkeypatch.setenv("GEMINI_MODEL", "gemini-test")
+    ask.call_gemini("hello")
+    assert mock_generate.call_args.kwargs["models"][0] == "gemini-test"
 
 
 def _statement(state, statement_id="st1", error=None):

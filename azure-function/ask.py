@@ -16,9 +16,8 @@ import sqlglot
 from sqlglot import exp
 
 import factcheck
+import gemini
 
-DEFAULT_MODEL = "gemini-3.6-flash"
-GEMINI_URL = "https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent"
 CATALOG = os.environ.get("DATABRICKS_CATALOG", "workspace")
 SCHEMA = os.environ.get("DATABRICKS_SCHEMA", "default")
 MAX_ROWS = 100
@@ -170,18 +169,14 @@ def guard_sql(sql):
 
 
 def call_gemini(prompt, json_mode=False, temperature=0.2):
-    config = {"temperature": temperature}
-    if json_mode:
-        config["responseMimeType"] = "application/json"
-    resp = requests.post(
-        GEMINI_URL.format(model=os.environ.get("GEMINI_MODEL", DEFAULT_MODEL)),
-        headers={"x-goog-api-key": os.environ["GEMINI_API_KEY"]},
-        json={"contents": [{"parts": [{"text": prompt}]}], "generationConfig": config},
-        timeout=60,
+    # A person is waiting on Ask, so fewer retries per model than the batch
+    # pipeline, but the same fallback to the next model.
+    models = [os.environ["GEMINI_MODEL"]] + gemini.MODELS if os.environ.get("GEMINI_MODEL") else None
+    text, _ = gemini.generate(
+        prompt, os.environ["GEMINI_API_KEY"], temperature=temperature, json_mode=json_mode,
+        models=models, attempts_per_model=2, timeout=45,
     )
-    resp.raise_for_status()
-    parts = resp.json()["candidates"][0]["content"]["parts"]
-    return "".join(part.get("text", "") for part in parts if not part.get("thought")).strip()
+    return text
 
 
 def run_sql(sql):

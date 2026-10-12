@@ -34,29 +34,21 @@ from datetime import datetime, timezone
 import requests
 from pyspark.sql import functions as F
 
-# Workspace files next to this notebook. factcheck.py is byte-identical to the
-# Azure Function's copy (enforced by azure-function/tests/test_factcheck.py).
+# Workspace files next to this notebook, byte-identical to the Azure Function's
+# copies (enforced by azure-function/tests/test_factcheck.py and test_gemini.py).
 import factcheck
+import gemini
 import insights
 
 API_KEY = dbutils.secrets.get(scope="behaviorlens", key="gemini_api_key")
 # gemini-2.5-flash (per the original proposal) returns 404 for new API keys; see
-# docs/ai-prompt-log.md for the substitution.
-MODEL = "gemini-3.6-flash"
-GEMINI_URL = f"https://generativelanguage.googleapis.com/v1beta/models/{MODEL}:generateContent"
+# docs/ai-prompt-log.md. gemini.MODELS lists the primary model and its fallbacks.
 PROMPT_VERSION = "v2"
 
 
 def call_gemini(prompt, temperature=0.3):
-    resp = requests.post(
-        GEMINI_URL,
-        headers={"x-goog-api-key": API_KEY},
-        json={"contents": [{"parts": [{"text": prompt}]}], "generationConfig": {"temperature": temperature}},
-        timeout=90,
-    )
-    resp.raise_for_status()
-    parts = resp.json()["candidates"][0]["content"]["parts"]
-    return "".join(part.get("text", "") for part in parts if not part.get("thought")).strip()
+    """Returns (text, model_used): retries overloaded models, then falls back."""
+    return gemini.generate(prompt, API_KEY, temperature=temperature)
 
 # COMMAND ----------
 
@@ -87,7 +79,7 @@ print(json.dumps(packs["anomaly_detection"], indent=1)[:3000])
 
 
 def score_relevance(facts, narrative):
-    raw = call_gemini(
+    raw, _ = call_gemini(
         f"Source facts:\n{json.dumps(facts)}\n\nNarrative under review:\n{narrative}\n\n"
         "Rate this narrative's relevance and usefulness to a product stakeholder, given the facts, "
         "on a 0-100 scale. Respond with ONLY the integer score.",
@@ -100,23 +92,31 @@ def score_relevance(facts, narrative):
 results = []
 for scenario, facts in packs.items():
     unverified = None
-    for attempt in (1, 2):
-        narrative = call_gemini(insights.build_prompt(scenario, facts, unverified))
-        check = factcheck.verify(narrative, facts)
-        if not check["unverified"]:
-            break
-        unverified = check["unverified"]
-        print(f"{scenario}: attempt {attempt} used unverified numbers {unverified}")
+    try:
+        for attempt in (1, 2):
+            narrative, model_used = call_gemini(insights.build_prompt(scenario, facts, unverified))
+            check = factcheck.verify(narrative, facts)
+            if not check["unverified"]:
+                break
+            unverified = check["unverified"]
+            print(f"{scenario}: attempt {attempt} used unverified numbers {unverified}")
+        status, score = ("verified" if not check["unverified"] else "needs_review"), score_relevance(facts, narrative)
+    except gemini.GeminiUnavailable as err:
+        # Every model stayed overloaded: record it and keep the other scenarios.
+        print(f"{scenario}: Gemini unavailable ({err})")
+        narrative, model_used, status, score, attempt = "", None, "generation_failed", None, 0
+        check = {"total": 0, "verified": 0, "unverified": []}
     results.append(
         {
             "scenario": scenario,
+            "model": model_used,
             "narrative": narrative,
-            "status": "verified" if not check["unverified"] else "needs_review",
+            "status": status,
             "facts_total": check["total"],
             "facts_verified": check["verified"],
             "unverified_facts": ", ".join(check["unverified"]),
             "attempts": attempt,
-            "relevance_score": score_relevance(facts, narrative),
+            "relevance_score": score,
             "facts_json": json.dumps(facts),
         }
     )
@@ -194,7 +194,6 @@ run_ts = datetime.now(timezone.utc)
 for row in results:
     row.update({
         "prompt_version": PROMPT_VERSION,
-        "model": MODEL,
         "generated_at": run_ts,
         "alert_status": alert_status if row["scenario"] == "anomaly_detection" else None,
     })

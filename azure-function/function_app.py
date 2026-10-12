@@ -15,6 +15,7 @@ import requests
 from azure.storage.blob import BlobServiceClient
 
 import ask
+import gemini
 
 app = func.FunctionApp(http_auth_level=func.AuthLevel.ANONYMOUS)
 # The storage SDK logs every HTTP request at INFO; keep the Function logs readable.
@@ -342,6 +343,8 @@ def ask_question(req: func.HttpRequest) -> func.HttpResponse:
         return _json_response({"error": f"Blocked by SQL guardrail: {err}", "sql": err.sql}, 422)
     except ask.QueryError as err:
         return _json_response({"error": f"Query failed: {err}"}, 502)
+    except gemini.GeminiUnavailable:
+        return _json_response({"error": "The AI model is busy right now. Please ask again in a moment."}, 503)
     except (requests.RequestException, KeyError, ValueError) as err:
         logging.exception("Ask failed")
         return _json_response({"error": f"Upstream error: {type(err).__name__}"}, 502)

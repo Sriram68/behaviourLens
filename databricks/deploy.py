@@ -14,7 +14,7 @@ import posixpath
 import bl_client
 
 NOTEBOOKS = ["01_ingestion", "02_aggregations", "03_data_quality", "04_ai_insights"]
-MODULES = ["insights.py", "factcheck.py"]
+MODULES = ["insights.py", "factcheck.py", "gemini.py"]
 SOURCE_DIR = bl_client.ROOT / "databricks" / "notebooks"
 
 

@@ -8,6 +8,7 @@ import pytest
 
 import ask
 import function_app
+import gemini
 
 
 def make_request(body, headers=None, method="POST", url="/api/events", params=None):
@@ -330,6 +331,12 @@ def test_ask_success_and_error_mapping(monkeypatch):
 
     monkeypatch.setattr(ask, "answer_question", failing)
     assert _ask("How many sessions?").status_code == 502
+
+    def busy(_):
+        raise gemini.GeminiUnavailable("all models 503")
+
+    monkeypatch.setattr(ask, "answer_question", busy)
+    assert _ask("How many sessions?").status_code == 503
 
     def upstream(_):
         raise ValueError("bad json from model")
