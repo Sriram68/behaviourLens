@@ -9,6 +9,10 @@ table events_enriched
 		formatString: #,##0
 		lineageTag: 7d4a836c-827e-4357-a809-e1183a7fd2e1
 
+	measure Users = DISTINCTCOUNT(events_enriched[userId])
+		formatString: #,##0
+		lineageTag: bf44dc15-325c-498e-9a66-76c6ec4808f0
+
 	column eventName
 		dataType: string
 		lineageTag: 7fbe1efe-c414-4ca3-8796-1cd4124ade23
@@ -111,6 +115,48 @@ table events_enriched
 
 		annotation SummarizationSetBy = Automatic
 
+	column appVersion
+		dataType: string
+		summarizeBy: none
+		lineageTag: 732fc6e9-3279-41b4-b9fc-6fecc894cc2e
+		sourceColumn: appVersion
+
+		annotation SummarizationSetBy = Automatic
+
+	column feature
+		dataType: string
+		summarizeBy: none
+		lineageTag: 4b193265-1cd2-41fb-993f-f3259e72c066
+		sourceColumn: feature
+
+		annotation SummarizationSetBy = Automatic
+
+	column onboarding_step
+		dataType: int64
+		formatString: 0
+		summarizeBy: none
+		lineageTag: 2d9f0822-0a91-4f82-b212-43942e281d3a
+		sourceColumn: onboarding_step
+
+		annotation SummarizationSetBy = Automatic
+
+	column error_code
+		dataType: int64
+		formatString: 0
+		summarizeBy: none
+		lineageTag: 417d71f7-1fa8-44a7-a345-04734f725d65
+		sourceColumn: error_code
+
+		annotation SummarizationSetBy = Automatic
+
+	column endpoint
+		dataType: string
+		summarizeBy: none
+		lineageTag: 79ea71ec-4fbe-47ba-b18f-2473ba31c098
+		sourceColumn: endpoint
+
+		annotation SummarizationSetBy = Automatic
+
 	column event_date = DATE(YEAR(events_enriched[event_timestamp]), MONTH(events_enriched[event_timestamp]), DAY(events_enriched[event_timestamp]))
 		dataType: dateTime
 		formatString: Long Date
@@ -120,7 +166,8 @@ table events_enriched
 			SWITCH(TRUE(),
 			  events_enriched[eventName] IN {"login_attempt","login_success","onboarding_step_complete"}, "Login & Onboarding",
 			  events_enriched[eventName] IN {"feature_click","search_query","filter_applied","export_triggered"}, "Feature Usage",
-			  events_enriched[eventName] IN {"api_error","page_not_found","retry_attempt"}, "Error & Recovery",
+			  events_enriched[eventName] IN {"api_error","page_not_found","retry_attempt","js_error"}, "Error & Recovery",
+			  events_enriched[eventName] = "page_view", "Navigation",
 			  "Other"
 			)
 		dataType: string
@@ -130,7 +177,7 @@ table events_enriched
 			SWITCH(events_enriched[eventName],
 			  "login_attempt", 1, "login_success", 2, "onboarding_step_complete", 3,
 			  "feature_click", 1, "search_query", 2, "filter_applied", 3, "export_triggered", 4,
-			  "api_error", 1, "page_not_found", 2, "retry_attempt", 3,
+			  "api_error", 1, "page_not_found", 2, "retry_attempt", 3, "js_error", 4,
 			  0
 			)
 		dataType: int64

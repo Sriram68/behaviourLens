@@ -5,8 +5,8 @@
     "x": 24.22727860852849,
     "y": 169.59095025969944,
     "z": 1001,
-    "height": 523.91489990942864,
-    "width": 1232.5627992088871
+    "height": 523.9148999094286,
+    "width": 1232.562799208887
   },
   "visual": {
     "visualType": "tableEx",
@@ -41,6 +41,48 @@
               },
               "queryRef": "ai_insights_weekly.narrative",
               "nativeQueryRef": "narrative"
+            },
+            {
+              "field": {
+                "Column": {
+                  "Expression": {
+                    "SourceRef": {
+                      "Entity": "ai_insights_weekly"
+                    }
+                  },
+                  "Property": "status"
+                }
+              },
+              "queryRef": "ai_insights_weekly.status",
+              "nativeQueryRef": "status"
+            },
+            {
+              "field": {
+                "Column": {
+                  "Expression": {
+                    "SourceRef": {
+                      "Entity": "ai_insights_weekly"
+                    }
+                  },
+                  "Property": "facts_verified"
+                }
+              },
+              "queryRef": "ai_insights_weekly.facts_verified",
+              "nativeQueryRef": "facts_verified"
+            },
+            {
+              "field": {
+                "Column": {
+                  "Expression": {
+                    "SourceRef": {
+                      "Entity": "ai_insights_weekly"
+                    }
+                  },
+                  "Property": "facts_total"
+                }
+              },
+              "queryRef": "ai_insights_weekly.facts_total",
+              "nativeQueryRef": "facts_total"
             },
             {
               "field": {

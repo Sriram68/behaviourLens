@@ -19,14 +19,14 @@
                 "Column": {
                   "Expression": {
                     "SourceRef": {
-                      "Entity": "DimDate"
+                      "Entity": "events_enriched"
                     }
                   },
-                  "Property": "DayOfWeek"
+                  "Property": "appVersion"
                 }
               },
-              "queryRef": "DimDate.DayOfWeek",
-              "nativeQueryRef": "DayOfWeek",
+              "queryRef": "events_enriched.appVersion",
+              "nativeQueryRef": "appVersion",
               "active": true
             }
           ]
@@ -38,18 +38,98 @@
                 "Measure": {
                   "Expression": {
                     "SourceRef": {
-                      "Entity": "error_summary_daily"
+                      "Entity": "events_enriched"
                     }
                   },
-                  "Property": "Total Errors"
+                  "Property": "Total Events"
                 }
               },
-              "queryRef": "error_summary_daily.Total Errors",
-              "nativeQueryRef": "Total Errors"
+              "queryRef": "events_enriched.Total Events",
+              "nativeQueryRef": "Total Events"
             }
           ]
         }
       }
+    },
+    "visualContainerObjects": {
+      "title": [
+        {
+          "properties": {
+            "show": {
+              "expr": {
+                "Literal": {
+                  "Value": "true"
+                }
+              }
+            },
+            "text": {
+              "expr": {
+                "Literal": {
+                  "Value": "'Errors by app version'"
+                }
+              }
+            }
+          }
+        }
+      ]
     }
+  },
+  "filterConfig": {
+    "filters": [
+      {
+        "name": "Filter6a1e0c2f9b7d4e3a8c51",
+        "field": {
+          "Column": {
+            "Expression": {
+              "SourceRef": {
+                "Entity": "events_enriched"
+              }
+            },
+            "Property": "flow"
+          }
+        },
+        "type": "Categorical",
+        "filter": {
+          "Version": 2,
+          "From": [
+            {
+              "Name": "e",
+              "Entity": "events_enriched",
+              "Type": 0
+            }
+          ],
+          "Where": [
+            {
+              "Condition": {
+                "In": {
+                  "Expressions": [
+                    {
+                      "Column": {
+                        "Expression": {
+                          "SourceRef": {
+                            "Source": "e"
+                          }
+                        },
+                        "Property": "flow"
+                      }
+                    }
+                  ],
+                  "Values": [
+                    [
+                      {
+                        "Literal": {
+                          "Value": "'Error & Recovery'"
+                        }
+                      }
+                    ]
+                  ]
+                }
+              }
+            }
+          ]
+        },
+        "howCreated": "User"
+      }
+    ]
   }
 }

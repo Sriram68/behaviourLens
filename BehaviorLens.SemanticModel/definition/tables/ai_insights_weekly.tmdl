@@ -1,6 +1,14 @@
 table ai_insights_weekly
 	lineageTag: 43083430-6555-40ea-9933-a6cdd7574519
 
+	measure 'Narratives Verified' = COUNTROWS(FILTER(ai_insights_weekly, ai_insights_weekly[status] = "verified"))
+		formatString: 0
+		lineageTag: 7507b1c8-bdce-4a87-a781-cebe8b0d7ee5
+
+	measure 'Facts Verified %' = DIVIDE(SUM(ai_insights_weekly[facts_verified]), SUM(ai_insights_weekly[facts_total]))
+		formatString: 0%
+		lineageTag: 329ca370-fa0c-4e64-a68b-2cd388723515
+
 	column scenario
 		dataType: string
 		lineageTag: 635e7066-c66a-4eee-a564-f54f7cc10997
@@ -27,6 +35,44 @@ table ai_insights_weekly
 		formatString: General Date
 		lineageTag: 0f928f63-d4e6-40f9-a9a0-3cbac25f76fa
 		sourceColumn: generated_at
+
+	column model
+		dataType: string
+		lineageTag: a69bce2e-64cd-451b-9446-37ce66ade51b
+		sourceColumn: model
+
+	column status
+		dataType: string
+		lineageTag: 87dde9fc-20a7-421a-8690-4e78dcca186c
+		sourceColumn: status
+
+	column facts_total
+		dataType: int64
+		formatString: 0
+		lineageTag: 3cd5226a-e2c3-41b6-899e-3b5a399297ae
+		sourceColumn: facts_total
+
+	column facts_verified
+		dataType: int64
+		formatString: 0
+		lineageTag: 367680c6-8767-4d09-995c-da0f2de1409d
+		sourceColumn: facts_verified
+
+	column unverified_facts
+		dataType: string
+		lineageTag: fd6c6e06-1d91-4430-a545-38d93af54527
+		sourceColumn: unverified_facts
+
+	column attempts
+		dataType: int64
+		formatString: 0
+		lineageTag: 38eb7e32-1f57-4d59-82b5-b84c0f344b92
+		sourceColumn: attempts
+
+	column alert_status
+		dataType: string
+		lineageTag: 03e8766f-a3ac-41bb-a529-6f0500735379
+		sourceColumn: alert_status
 
 	partition ai_insights_weekly = m
 		mode: import

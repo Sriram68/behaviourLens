@@ -22,11 +22,11 @@
                       "Entity": "events_enriched"
                     }
                   },
-                  "Property": "flow_step"
+                  "Property": "onboarding_step"
                 }
               },
-              "queryRef": "events_enriched.flow_step",
-              "nativeQueryRef": "flow_step",
+              "queryRef": "events_enriched.onboarding_step",
+              "nativeQueryRef": "onboarding_step",
               "active": true
             }
           ]
@@ -41,15 +41,37 @@
                       "Entity": "events_enriched"
                     }
                   },
-                  "Property": "Sessions per Step"
+                  "Property": "Users"
                 }
               },
-              "queryRef": "events_enriched.Sessions per Step",
-              "nativeQueryRef": "Sessions per Step"
+              "queryRef": "events_enriched.Users",
+              "nativeQueryRef": "Users"
             }
           ]
         }
       }
+    },
+    "visualContainerObjects": {
+      "title": [
+        {
+          "properties": {
+            "show": {
+              "expr": {
+                "Literal": {
+                  "Value": "true"
+                }
+              }
+            },
+            "text": {
+              "expr": {
+                "Literal": {
+                  "Value": "'Onboarding funnel: new users per step'"
+                }
+              }
+            }
+          }
+        }
+      ]
     }
   },
   "filterConfig": {
@@ -63,7 +85,7 @@
                 "Entity": "events_enriched"
               }
             },
-            "Property": "flow"
+            "Property": "eventName"
           }
         },
         "type": "Categorical",
@@ -88,7 +110,7 @@
                             "Source": "e"
                           }
                         },
-                        "Property": "flow"
+                        "Property": "eventName"
                       }
                     }
                   ],
@@ -96,7 +118,7 @@
                     [
                       {
                         "Literal": {
-                          "Value": "'Login & Onboarding'"
+                          "Value": "'onboarding_step_complete'"
                         }
                       }
                     ]

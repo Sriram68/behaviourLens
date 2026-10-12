@@ -24,44 +24,6 @@
                           "Entity": "ai_insights_weekly"
                         }
                       },
-                      "Property": "relevance_score"
-                    }
-                  },
-                  "Function": 1
-                }
-              },
-              "queryRef": "Avg Relevance Score",
-              "nativeQueryRef": "Avg Relevance Score"
-            },
-            {
-              "field": {
-                "Aggregation": {
-                  "Expression": {
-                    "Column": {
-                      "Expression": {
-                        "SourceRef": {
-                          "Entity": "ai_insights_weekly"
-                        }
-                      },
-                      "Property": "relevance_score"
-                    }
-                  },
-                  "Function": 3
-                }
-              },
-              "queryRef": "Min Relevance Score",
-              "nativeQueryRef": "Min Relevance Score"
-            },
-            {
-              "field": {
-                "Aggregation": {
-                  "Expression": {
-                    "Column": {
-                      "Expression": {
-                        "SourceRef": {
-                          "Entity": "ai_insights_weekly"
-                        }
-                      },
                       "Property": "scenario"
                     }
                   },
@@ -70,6 +32,53 @@
               },
               "queryRef": "Scenarios Generated",
               "nativeQueryRef": "Scenarios Generated"
+            },
+            {
+              "field": {
+                "Measure": {
+                  "Expression": {
+                    "SourceRef": {
+                      "Entity": "ai_insights_weekly"
+                    }
+                  },
+                  "Property": "Narratives Verified"
+                }
+              },
+              "queryRef": "ai_insights_weekly.Narratives Verified",
+              "nativeQueryRef": "Narratives Verified"
+            },
+            {
+              "field": {
+                "Measure": {
+                  "Expression": {
+                    "SourceRef": {
+                      "Entity": "ai_insights_weekly"
+                    }
+                  },
+                  "Property": "Facts Verified %"
+                }
+              },
+              "queryRef": "ai_insights_weekly.Facts Verified %",
+              "nativeQueryRef": "Facts Verified %"
+            },
+            {
+              "field": {
+                "Aggregation": {
+                  "Expression": {
+                    "Column": {
+                      "Expression": {
+                        "SourceRef": {
+                          "Entity": "ai_insights_weekly"
+                        }
+                      },
+                      "Property": "relevance_score"
+                    }
+                  },
+                  "Function": 1
+                }
+              },
+              "queryRef": "Avg Relevance Score",
+              "nativeQueryRef": "Avg Relevance Score"
             },
             {
               "field": {
