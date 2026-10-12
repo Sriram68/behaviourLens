@@ -1,64 +1,86 @@
-"""Syncs NDJSON event files from the `raw-events` Azure Blob container into the
-Databricks Unity Catalog Volume that 01_ingestion.py reads from
-(/Volumes/workspace/default/raw_events by default). Needed because Databricks
-Free Edition runs on Databricks-managed infra, not inside the Azure
-subscription, so there's no direct Blob mount — see docs/architecture.md.
+"""Incrementally syncs NDJSON event files from the `raw-events` Azure Blob
+container into the Unity Catalog Volume that 01_ingestion.py reads from.
 
-Requires three env vars (never pass these as CLI args or print them):
-  AZURE_STORAGE_CONNECTION_STRING  - connection string for the storage account
-  DATABRICKS_HOST                  - e.g. https://<workspace>.cloud.databricks.com
-  DATABRICKS_TOKEN                 - a personal access token (User Settings > Developer)
+Needed because Databricks Free Edition runs on Databricks-managed infra, not
+inside the Azure subscription, so there's no direct Blob mount (see
+docs/architecture.md). Blobs are write-once, so only names missing from the
+Volume are uploaded: a re-run after a demo takes seconds, not minutes.
+
+  python databricks/sync_raw_events.py --since 2026/10/12   # only blobs from that date on
+  python databricks/sync_raw_events.py --dry-run
+
+Credentials: see bl_client.py.
 """
 
-import os
+import argparse
 import sys
+from concurrent.futures import ThreadPoolExecutor
 
-import requests
 from azure.storage.blob import BlobServiceClient
 
-CONTAINER_NAME = os.environ.get("RAW_EVENTS_CONTAINER", "raw-events")
-VOLUME_PATH = os.environ.get("DATABRICKS_VOLUME_PATH", "/Volumes/workspace/default/raw_events")
+import bl_client
+
+
+def existing_files(ws, prefixes):
+    """Relative names (YYYY/MM/DD/uuid.ndjson) already in the Volume."""
+    found = set()
+    for prefix in prefixes:
+        page_token = None
+        while True:
+            params = {"page_token": page_token} if page_token else {}
+            resp = ws.request("GET", f"/api/2.0/fs/directories{bl_client.VOLUME_PATH}/{prefix}", params=params)
+            if resp.status_code == 404:
+                break
+            resp.raise_for_status()
+            data = resp.json()
+            for entry in data.get("contents", []):
+                if not entry.get("is_directory"):
+                    found.add(f"{prefix}/{entry['name']}")
+            page_token = data.get("next_page_token")
+            if not page_token:
+                break
+    return found
+
+
+def sync(since, dry_run=False, workers=8):
+    ws = bl_client.Workspace()
+    container = BlobServiceClient.from_connection_string(
+        bl_client.storage_connection_string()
+    ).get_container_client(bl_client.CONTAINER)
+
+    blobs = [b.name for b in container.list_blobs() if b.name.endswith(".ndjson") and b.name[:10] >= since]
+    prefixes = sorted({name[:10] for name in blobs})
+    todo = sorted(set(blobs) - existing_files(ws, prefixes))
+    print(f"{len(blobs)} blobs since {since}; {len(blobs) - len(todo)} already in {bl_client.VOLUME_PATH}; {len(todo)} to upload")
+    if dry_run or not todo:
+        return len(todo), 0
+
+    def upload(name):
+        data = container.download_blob(name).readall()
+        resp = ws.request(
+            "PUT", f"/api/2.0/fs/files{bl_client.VOLUME_PATH}/{name}", params={"overwrite": "false"}, data=data
+        )
+        return name, resp.status_code in (200, 204, 409)  # 409: uploaded by a concurrent run
+
+    failed = 0
+    with ThreadPoolExecutor(max_workers=workers) as pool:
+        for i, (name, ok) in enumerate(pool.map(upload, todo), start=1):
+            if not ok:
+                failed += 1
+                print(f"FAILED {name}")
+            if i % 100 == 0:
+                print(f"  uploaded {i}/{len(todo)}")
+    print(f"Synced {len(todo) - failed} blobs ({failed} failed).")
+    return len(todo), failed
 
 
 def main():
-    conn_str = os.environ.get("AZURE_STORAGE_CONNECTION_STRING")
-    host = os.environ.get("DATABRICKS_HOST")
-    token = os.environ.get("DATABRICKS_TOKEN")
-    if not all([conn_str, host, token]):
-        sys.exit(
-            "Missing required env vars: AZURE_STORAGE_CONNECTION_STRING, "
-            "DATABRICKS_HOST, DATABRICKS_TOKEN"
-        )
-    host = host.rstrip("/")
-
-    blob_service = BlobServiceClient.from_connection_string(conn_str)
-    container = blob_service.get_container_client(CONTAINER_NAME)
-
-    synced = 0
-    skipped = 0
-    failed = 0
-    for blob in container.list_blobs():
-        dest_path = f"{VOLUME_PATH}/{blob.name}"
-        url = f"{host}/api/2.0/fs/files{dest_path}"
-
-        data = container.download_blob(blob.name).readall()
-        resp = requests.put(
-            url,
-            params={"overwrite": "true"},
-            headers={"Authorization": f"Bearer {token}"},
-            data=data,
-            timeout=30,
-        )
-        if resp.status_code in (200, 204):
-            synced += 1
-        else:
-            failed += 1
-            print(f"FAILED {blob.name}: {resp.status_code} {resp.text[:200]}")
-
-        if (synced + failed) % 50 == 0:
-            print(f"progress: {synced} synced, {failed} failed")
-
-    print(f"Done. Synced {synced} blobs to {VOLUME_PATH} ({failed} failed).")
+    parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
+    parser.add_argument("--since", default="2000/01/01", help="only blobs written on/after this date (YYYY/MM/DD)")
+    parser.add_argument("--dry-run", action="store_true")
+    args = parser.parse_args()
+    _, failed = sync(args.since, args.dry_run)
+    sys.exit(1 if failed else 0)
 
 
 if __name__ == "__main__":

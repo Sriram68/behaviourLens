@@ -1,8 +1,9 @@
 # Databricks notebook source
 # MAGIC %md
 # MAGIC # BehaviorLens — Aggregations
-# MAGIC Computes `session_summary`, `feature_adoption_daily`, and `error_summary_daily`
-# MAGIC from `events_enriched`. Run `01_ingestion` first.
+# MAGIC Computes `session_summary`, `feature_adoption_daily`, `feature_usage_daily`,
+# MAGIC `error_summary_daily`, and `error_detail_daily` from `events_enriched`.
+# MAGIC Run `01_ingestion` first.
 
 # COMMAND ----------
 
@@ -22,7 +23,7 @@ from pyspark.sql import functions as F
 events_enriched = spark.table("events_enriched")
 
 FEATURE_EVENTS = ["feature_click", "search_query", "filter_applied", "export_triggered"]
-ERROR_EVENTS = ["api_error", "page_not_found", "retry_attempt"]
+ERROR_EVENTS = ["api_error", "page_not_found", "retry_attempt", "js_error"]
 
 # COMMAND ----------
 
@@ -38,6 +39,7 @@ session_summary = (
         F.first("session_duration_seconds").alias("session_duration_seconds"),
         F.count("*").alias("event_count"),
         F.countDistinct("eventName").alias("distinct_event_types"),
+        F.first("appVersion", ignorenulls=True).alias("appVersion"),
     )
 )
 
@@ -86,4 +88,48 @@ error_summary_daily = (
 
 error_summary_daily.write.format("delta").mode("overwrite").option("overwriteSchema", "true").saveAsTable("error_summary_daily")
 print(f"error_summary_daily row count: {error_summary_daily.count()}")
-display(error_summary_daily)
+
+# COMMAND ----------
+
+# MAGIC %md ## feature_usage_daily
+# MAGIC Which product feature each `feature_click` was on (dashboard, saved views, ...).
+
+# COMMAND ----------
+
+feature_usage_daily = (
+    events_enriched
+    .filter((F.col("eventName") == "feature_click") & F.col("feature").isNotNull())
+    .withColumn("event_date", F.to_date("event_timestamp"))
+    .groupBy("event_date", "feature")
+    .agg(
+        F.count("*").alias("event_count"),
+        F.countDistinct("userId").alias("distinct_users"),
+    )
+)
+
+feature_usage_daily.write.format("delta").mode("overwrite").option("overwriteSchema", "true").saveAsTable("feature_usage_daily")
+print(f"feature_usage_daily row count: {feature_usage_daily.count()}")
+
+# COMMAND ----------
+
+# MAGIC %md ## error_detail_daily
+# MAGIC Errors broken down by cause (status code, endpoint) and the app version that produced
+# MAGIC them: the table that shows a spike belongs to one release.
+
+# COMMAND ----------
+
+error_detail_daily = (
+    events_enriched
+    .filter(F.col("eventName").isin(ERROR_EVENTS))
+    .withColumn("event_date", F.to_date("event_timestamp"))
+    .groupBy("event_date", "eventName", F.col("error_code").alias("code"), "endpoint", "appVersion")
+    .agg(
+        F.count("*").alias("event_count"),
+        F.countDistinct("userId").alias("distinct_users"),
+        F.countDistinct("sessionId").alias("distinct_sessions"),
+    )
+)
+
+error_detail_daily.write.format("delta").mode("overwrite").option("overwriteSchema", "true").saveAsTable("error_detail_daily")
+print(f"error_detail_daily row count: {error_detail_daily.count()}")
+display(error_detail_daily.orderBy(F.desc("event_count")).limit(20))

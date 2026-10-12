@@ -174,3 +174,21 @@ def test_answer_question_refuses_unsafe_generated_sql(monkeypatch):
     with pytest.raises(ask.UnsafeQuery):
         ask.answer_question("Please clean up the sessions table")
     ask.run_sql.assert_not_called()
+
+
+def test_read_only_grants_cover_exactly_the_allowlisted_tables():
+    """databricks/setup_ask_access.py grants the Ask identity SELECT on its own
+    table list; it must match the guardrail's allowlist, no more and no less."""
+    import importlib.util
+    import sys
+    from pathlib import Path
+
+    databricks_dir = Path(__file__).resolve().parents[2] / "databricks"
+    sys.path.insert(0, str(databricks_dir))
+    try:
+        spec = importlib.util.spec_from_file_location("setup_ask_access", databricks_dir / "setup_ask_access.py")
+        module = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(module)
+    finally:
+        sys.path.remove(str(databricks_dir))
+    assert sorted(module.TABLES) == sorted(ask.TABLES)
