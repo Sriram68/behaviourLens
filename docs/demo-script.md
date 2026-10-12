@@ -29,14 +29,17 @@ python databricks/run_pipeline.py --reset --since <today as YYYY/MM/DD>
 
 Then open `BehaviorLens.pbip` in Power BI Desktop, **Home → Refresh**, and save.
 
-## T-minus 30 minutes: preflight
+## T-minus 10 minutes: preflight
 
 ```bash
 python scripts/preflight.py
 ```
 
-Every line must say PASS. It also starts the SQL warehouse and runs one real Ask,
-so the first question on stage is fast. Then open:
+Every line must say PASS. It also starts the SQL warehouse (it auto-stops when idle)
+and asks the live screen's four suggested questions, so their answers are cached for
+15 minutes and come back instantly on stage. Run it no earlier than ~10 minutes
+before the Ask segment. A brand-new question takes ~5-10 s on a warm warehouse.
+Then open:
 
 1. **Projector:** `https://sriram68.github.io/behaviourLens/demo-app/live.html`
 2. **Laptop tab 2:** Power BI Desktop with the refreshed report
@@ -131,7 +134,7 @@ counts.
 | Venue Wi-Fi is down | Phone hotspot. If the Function itself is unreachable, run it locally (`cd azure-function && func start`) and open `live.html?api=http://localhost:7071/api` |
 | Pipeline run is slow or fails | Skip section 8. The dashboards and AI page already hold the regenerated history |
 | Gemini is down or rate-limited | AI Insights page shows the narratives stored by the last run; skip the live Ask |
-| Ask times out on the first question | The warehouse was cold: preflight should have warmed it; ask again |
+| Ask is slow or says the model is busy | Use a suggested question (cached by preflight), or ask again: it falls back across three Gemini models |
 | Nobody scans the QR code | Use your own phone: sign in, export twice, tap Share |
 | Everything is down | Play the recorded walkthrough |
 
