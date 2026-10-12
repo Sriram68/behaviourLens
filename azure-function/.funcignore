@@ -1,0 +1,9 @@
+.venv/
+.python_packages/
+tests/
+__pycache__/
+.pytest_cache/
+.coverage
+htmlcov/
+local.settings.json
+requirements-dev.txt

@@ -30,7 +30,7 @@ See [S3-C-01_BehaviorLens_Proposal.md](S3-C-01_BehaviorLens_Proposal.md) for the
 
 ## Hosting
 
-- **Function:** `https://func-behaviorlens47209.azurewebsites.net/api/` (personal subscription; the original `pSiddhi` subscription's resource group restricted `Microsoft.Web/*` writes, see [docs/architecture.md](docs/architecture.md)). It can also run locally with Azure Functions Core Tools (`func start`) against the same storage account.
+- **Function:** `https://func-behaviorlens-psiddhi.azurewebsites.net/api/`, Linux Consumption plan in the project's own `pSiddhi` resource group (`rg-pSiddhi3.0-2026-01-sem3-Sriram`), writing to `behaviorlensstore01`. It can also run locally with Azure Functions Core Tools (`func start`) against the same storage account. See [docs/architecture.md](docs/architecture.md) for its hosting history.
 - **Demo app and live view:** GitHub Pages, deployed by `.github/workflows/pages.yml` (only `demo-app/` and the SDK are published).
 
 ## Running locally

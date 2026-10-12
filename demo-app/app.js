@@ -8,7 +8,7 @@ const params = new URLSearchParams(window.location.search);
 const APP_VERSION = "2.4.0";
 const EXPORT_FAIL_RATE = params.has("exportFailRate") ? Number(params.get("exportFailRate")) : 0.45;
 const SHARE_BUG_RATE = params.has("shareBug") ? Number(params.get("shareBug")) : 0.3;
-const ENDPOINT = params.get("api") || "https://func-behaviorlens47209.azurewebsites.net/api/events";
+const ENDPOINT = params.get("api") || "https://func-behaviorlens-psiddhi.azurewebsites.net/api/events";
 
 const logEl = document.getElementById("log");
 const debugEl = document.getElementById("debug");

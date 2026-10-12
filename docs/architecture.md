@@ -71,7 +71,17 @@ BehaviorLens Live ── POST /api/ask ──► Gemini writes SQL → sqlglot g
 
 ## One remaining deliberate substitution, and one now resolved
 
-### Resolved: Azure Function is deployed to Azure
+### Resolved (October 2026): Azure Function hosted in the project's own subscription
+
+The personal Free Trial subscription that hosted `func-behaviorlens47209` reached the end of its trial
+and was disabled by Azure (the Function returned `403 Site Disabled`). By then the project resource
+group in the `pSiddhi` subscription had been granted **Website Contributor**, which includes
+`Microsoft.Web/sites/*`: the permission whose absence forced the move at mid-term. The Function now
+runs there as `func-behaviorlens-psiddhi` (Linux Consumption, Python 3.11, East US), next to the
+`behaviorlensstore01` storage account it writes to. This closes the original hosting deviation:
+ingestion, storage and compute all live in the subscription L&D assigned to the project.
+
+### Earlier: Azure Function deployed to a personal subscription
 
 At the Week 10 checkpoint, the target Azure subscription's resource group (`rg-pSiddhi3.0-2026-01-sem3-Sriram`) restricted `Microsoft.Web/ServerFarms/write` and `Microsoft.Web/Sites/write`, blocking Function App creation, so the Function ran locally via Core Tools against real Azure Storage.
 

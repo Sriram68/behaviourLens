@@ -36,7 +36,7 @@ import uuid
 from collections import Counter
 from datetime import datetime, timedelta, timezone
 
-ENDPOINT = os.environ.get("BEHAVIORLENS_ENDPOINT", "https://func-behaviorlens47209.azurewebsites.net/api/events")
+ENDPOINT = os.environ.get("BEHAVIORLENS_ENDPOINT", "https://func-behaviorlens-psiddhi.azurewebsites.net/api/events")
 APP_URL = "https://sriram68.github.io/behaviourLens/demo-app/index.html"
 BATCH_SIZE = 200  # the Function's per-request maximum
 

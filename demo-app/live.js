@@ -5,7 +5,7 @@
 // ?app=<url> overrides the URL encoded in the QR code.
 
 const params = new URLSearchParams(window.location.search);
-const API = (params.get("api") || "https://func-behaviorlens47209.azurewebsites.net/api").replace(/\/$/, "");
+const API = (params.get("api") || "https://func-behaviorlens-psiddhi.azurewebsites.net/api").replace(/\/$/, "");
 const APP_URL = params.get("app") || new URL("index.html", window.location.href).href.split(/[?#]/)[0];
 const MINUTES = 30;
 const POLL_MS = 3000;

@@ -17,7 +17,7 @@ import urllib.error
 import urllib.request
 from pathlib import Path
 
-API = "https://func-behaviorlens47209.azurewebsites.net/api"
+API = "https://func-behaviorlens-psiddhi.azurewebsites.net/api"
 PAGES = "https://sriram68.github.io/behaviourLens/demo-app"
 ORIGINS = ["https://sriram68.github.io", "http://localhost:5500"]
 

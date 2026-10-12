@@ -32,9 +32,9 @@ TABLES = [
     "feature_usage_daily", "error_summary_daily", "error_detail_daily",
 ]
 TOKEN_DAYS = 60
-FUNCTION_APP = os.environ.get("BEHAVIORLENS_FUNCTION_APP", "func-behaviorlens47209")
-RESOURCE_GROUP = os.environ.get("BEHAVIORLENS_RESOURCE_GROUP", "rg-behaviorlens")
-SUBSCRIPTION = os.environ.get("BEHAVIORLENS_SUBSCRIPTION", "Azure subscription 1")
+FUNCTION_APP = os.environ.get("BEHAVIORLENS_FUNCTION_APP", "func-behaviorlens-psiddhi")
+RESOURCE_GROUP = os.environ.get("BEHAVIORLENS_RESOURCE_GROUP", "rg-pSiddhi3.0-2026-01-sem3-Sriram")
+SUBSCRIPTION = os.environ.get("BEHAVIORLENS_SUBSCRIPTION", "pSiddhi")
 
 
 def service_principal(ws):
