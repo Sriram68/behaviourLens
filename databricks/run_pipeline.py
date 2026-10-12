@@ -5,6 +5,8 @@ reporting every task. Afterwards, refresh Power BI (Home -> Refresh).
 
   python databricks/run_pipeline.py --since 2026/10/12
   python databricks/run_pipeline.py --skip-sync          # just re-run the job
+  python databricks/run_pipeline.py --reset --since 2026/10/12
+      # after regenerating the demo history: empty the Volume, sync only today's blobs
 
 Credentials: see bl_client.py.
 """
@@ -48,10 +50,11 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument("--since", default="2000/01/01", help="sync blobs written on/after YYYY/MM/DD")
     parser.add_argument("--skip-sync", action="store_true")
+    parser.add_argument("--reset", action="store_true", help="empty the Volume before syncing")
     args = parser.parse_args()
 
     if not args.skip_sync:
-        _, failed = sync(args.since)
+        _, failed = sync(args.since, reset=args.reset)
         if failed:
             sys.exit("Sync had failures; not starting the job.")
     ok = run_job(bl_client.Workspace())

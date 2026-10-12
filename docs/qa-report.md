@@ -1,6 +1,64 @@
-# QA Report — Wednesday Checkpoint
+# QA Report
 
-## Summary
+## Demo-readiness pass (October 2026)
+
+Everything below "Final-term checkpoint" is the earlier report, kept as history. This pass hardened
+every layer for the live demonstration and added the AI fact-check layer.
+
+| Layer | Tool | Result |
+|---|---|---|
+| SDK unit tests | Jest | 29/29 passing; 92.8% statements, 86.2% branches, 100% functions, 96.9% lines |
+| SDK size | terser + gzip, gated in CI | 2,038 bytes minified + gzipped (budget 2,048) |
+| Azure Function unit tests | Pytest | 69/69 passing; 98% coverage (`function_app` 97%, `ask` 99%, `factcheck` 100%) |
+| Insight layer | Pytest + pandas | 7/7 passing, 99% coverage: detects all three planted findings |
+| E2E | Playwright | 3 flows against the deployed Function (or a local one via `BEHAVIORLENS_API`) + 4 live-view tests against a mocked API |
+| Data quality | Great Expectations | 22 checks across 7 tables (was 15 across 5), incl. zero unmasked emails, no future timestamps, sessions under 24 h |
+| Simulated history | `qa/synthetic_event_generator.py` | ~33k events, ~2.9k sessions, ~270 users over 8 weeks with three planted findings |
+
+### What the new tests prove
+
+- **The AI layer finds what was planted** (`databricks/tests/test_insights.py`): given the generator's
+  output, `insights.py` flags the export incident on the release day, attributes it to
+  `api_error 502 /api/export` on app version 2.4.0 (99% of spike errors), measures exports failing
+  ~2% → ~40%, finds onboarding step 3 as the biggest drop, Scheduled Reports as least used, and Saved
+  Views as the power-user feature. A steady history (incident outside the window) raises no anomaly.
+- **Fact checking can't be talked into a pass** (`azure-function/tests/test_factcheck.py`): invented
+  numbers, dates and versions are flagged; rounding must match the precision written; numeric
+  strings from SQL results count; booleans don't.
+- **The Ask guardrail holds** (`azure-function/tests/test_ask.py`): DDL/DML, stacked statements,
+  non-allowlisted tables, other catalogs/schemas, `secret()`, `ai_query()`, `read_files()` and
+  `current_user()` are rejected; limits are added or capped; set operations are wrapped. The read-only
+  grants script must cover exactly the guardrail's allowlist.
+- **Privacy end to end:** the SDK and Function mask emails (including inside URLs); the login E2E test
+  asserts the typed email never reaches the network.
+
+### Bugs found and fixed in this pass
+
+6. **The deployed Function was stopped** (`403 Site Disabled`). Step 1 of the demo and the
+   merge-blocking E2E job would both have failed. Added `scripts/preflight.py` so this is caught the
+   morning of the demo, not on stage.
+7. **The SDK silently dropped events on server errors.** `fetch` only rejects on network failure; a
+   500/403 response resolves normally, so the batch was neither sent nor re-queued. Now any non-2xx is
+   a failure, with exponential backoff (capped at 30 s), a bounded queue and localStorage persistence.
+8. **The email-masking regex swallowed whole URLs.** `https://app/?invite=jane@psiog.com` became
+   `[redacted]@psiog.com`, destroying the URL. Caught by a unit test before release; fixed in both the
+   SDK and the Function.
+9. **The load generator produced unrealistic sessions.** Events and timestamps were drawn
+   independently, so sessions spanned weeks (the "thousands of minutes" caveat in the Power BI guide)
+   and funnels had no real drop-off. Rewritten as ordered journeys; a new data-quality check (sessions
+   under 24 h) would now catch a regression.
+10. **Live export failure rate could exceed 100%.** Retries call `/api/export` again but weren't counted
+    as calls. Now attempts + retries form the denominator.
+11. **The live view scrolled sideways on phones.** An implicit `auto` grid column grew to fit the
+    event-feed table. Found in screenshot review; fixed with `minmax(0, 1fr)` tracks.
+12. **A self-graded 100/100 relevance score proved little.** Replaced as the quality gate by the
+    deterministic fact check; the LLM score is kept only as a soft signal.
+
+---
+
+## Final-term checkpoint
+
+### Summary
 
 | Layer | Tool | Result |
 |---|---|---|
@@ -13,7 +71,7 @@
 | Power BI | 4 required views | Usage Trends, User Journeys, Feature Adoption, Error Patterns — see [powerbi-guide.md](powerbi-guide.md) |
 | AI output quality | 3 Gemini scenarios | 100/100 average relevance score (target: >85%) — see [ai-prompt-log.md](ai-prompt-log.md) |
 
-## SDK test suite (`sdk/tests/behaviorlens.test.js`)
+### SDK test suite (`sdk/tests/behaviorlens.test.js`)
 
 12 tests covering: `init` validation, `track` guardrails (throws before init / without eventName), schema-compliant event construction, session/user ID persistence across calls, batching (auto-flush at `batchSize`, manual `flush()`, interval-based flush via fake timers), and network-failure re-queueing.
 
@@ -22,7 +80,7 @@ Tests:       12 passed, 12 total
 Coverage:    85.36% stmts | 80% branch | 95.23% funcs | 90.78% lines
 ```
 
-### Bundle size
+#### Bundle size
 
 Proposal target: <2KB gzipped. `sdk/src/behaviorlens.js` is a single dependency-free
 file, minified with `terser` and measured with `gzip`:
@@ -35,7 +93,7 @@ minified + gzipped:      1,045 bytes  (1.02 KB)
 
 Well within target — reproducible via `npx terser sdk/src/behaviorlens.js -c -m | gzip -c | wc -c`.
 
-## Azure Function test suite (`azure-function/tests/test_function_app.py`)
+### Azure Function test suite (`azure-function/tests/test_function_app.py`)
 
 6 tests covering: valid batch → 200 + correct blob write, bare-list payload handling, invalid JSON → 400, empty events → 400, missing `events` key → 400, and date-partitioned blob naming.
 
@@ -44,11 +102,11 @@ Tests:       6 passed, 6 total
 Coverage:    86% (function_app.py)
 ```
 
-## Data quality (Great Expectations)
+### Data quality (Great Expectations)
 
 `databricks/notebooks/03_data_quality.py` runs 15 expectations across `events_raw`, `events_enriched`, `session_summary`, `feature_adoption_daily`, and `error_summary_daily` — null checks, uniqueness (`sessionId` in `session_summary`), range checks (non-negative counts, non-negative session duration), and set-membership checks (`eventName` against the 10 known event types). Results are written to `qa_data_quality_results` for auditability. All 15 passed both in the initial small-scale run and the 811-event scale test.
 
-## Scale test
+### Scale test
 
 `qa/synthetic_event_generator.py` generates realistic synthetic events (weighted across the 3 flows, 60 synthetic users, timestamps spread over 3 days) and sends them through the real SDK-equivalent path (batched POSTs to the ingestion endpoint) — not inserted directly into Blob Storage, so the full path is exercised. For Phase 2 the target was raised to 5,000+ events and pointed at the now-deployed Azure Function (`func-behaviorlens47209`, see [architecture.md](architecture.md)).
 
@@ -59,7 +117,7 @@ Coverage:    86% (function_app.py)
 - All 15 Great Expectations checks still pass at this volume.
 - The pipeline is now also registered as a persistent Databricks Job ("BehaviorLens Pipeline", 4 tasks: ingestion → aggregations → data_quality → ai_insights) under Workflows → Jobs, rather than only existing as ad-hoc API-submitted runs — re-runnable and inspectable from the Databricks UI.
 
-## E2E test suite (`e2e/tests/`)
+### E2E test suite (`e2e/tests/`)
 
 3 Playwright scenarios, one per proposal flow, run against the demo app served locally and the **live deployed Azure Function** (not a mock) — covering the full browser → SDK → ingestion path:
 
@@ -73,7 +131,7 @@ Coverage:    86% (function_app.py)
 
 Wired into CI as `e2e-tests` in `.github/workflows/ci.yml`. Initially marked `continue-on-error: true` since it depends on live network access to Azure rather than being fully local/mocked like `sdk-tests` and `function-tests`; promoted to merge-blocking after multiple stable runs (including live re-runs during the Phase 6 regression pass) showed no flakiness.
 
-## Bugs found and fixed during this QA pass
+### Bugs found and fixed during this QA pass
 
 Real defects surfaced and were fixed before each scale test passed — left in this report because catching them is the point of embedding QA into every stage rather than validating happy-path-only:
 
@@ -83,11 +141,11 @@ Real defects surfaced and were fixed before each scale test passed — left in t
 4. **No CORS configured on the deployed Function App.** The SDK's `fetch()` call sends `Content-Type: application/json`, which isn't CORS-safelisted and triggers a browser preflight `OPTIONS` request. The freshly deployed Function had no CORS policy, so any real browser would have silently failed to deliver events — this had never surfaced before because local dev via `func start` enables permissive CORS by default, masking the gap. Caught before writing the E2E suite by checking `az functionapp cors show` returned empty; fixed with `az functionapp cors add --allowed-origins http://localhost:5500`, verified via a manual preflight request before trusting Playwright's results.
 5. **Unpinned `azure-functions` dependency broke unit-testability.** `requirements.txt` listed `azure-functions` with no version. A fresh `pip install` for the Phase 6 regression pass pulled 1.14.0, where `@app.route(...)` returns a `FunctionBuilder` instead of the decorated function — `function_app.ingest_events` silently became non-callable in tests (`AttributeError: 'NoneType' object has no attribute 'status_code'` on all 6 tests), with no change to the actual deployed behavior. Fixed by registering the route via `app.route(...)(ingest_events)` after the function definition instead of as a decorator, keeping `ingest_events` a plain callable for tests, and pinning `azure-functions==1.14.0`.
 
-## Power BI dashboards
+### Power BI dashboards
 
 4/4 required analytics views built against the Databricks semantic model (Import mode): Usage Trends, User Journeys, Feature Adoption, Error Patterns. Full configuration, model structure, and gotchas hit while building it (a silent relationship-persistence bug, a continuous-axis rendering trap, a `growToFit` misunderstanding) are documented in [powerbi-guide.md](powerbi-guide.md).
 
-## AI insights (`databricks/notebooks/04_ai_insights.py`)
+### AI insights (`databricks/notebooks/04_ai_insights.py`)
 
 3 scenarios per the proposal's AI layer, run as the 4th task in the "BehaviorLens Pipeline" Databricks Job, against `gemini-3.6-flash` (see [ai-prompt-log.md](ai-prompt-log.md) for the model-availability deviation from the proposal's Gemini 2.5 Flash):
 
@@ -99,7 +157,7 @@ Each narrative is scored for relevance against its own source data by a second G
 
 Databricks secret `behaviorlens/gemini_api_key` holds the API key — never in notebook source or git.
 
-## Known gaps (documented, not hidden)
+### Known gaps (documented, not hidden)
 
 - Load test target in the original proposal was 5,000+ events; exceeded (12,001 total processed end-to-end, spread across ~8 months rather than one burst).
 - Function App and Databricks-to-Blob mount substitutions are documented in [architecture.md](architecture.md) — both are real, working equivalents, not simulated stand-ins.

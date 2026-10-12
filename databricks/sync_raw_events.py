@@ -8,6 +8,9 @@ Volume are uploaded: a re-run after a demo takes seconds, not minutes.
 
   python databricks/sync_raw_events.py --since 2026/10/12   # only blobs from that date on
   python databricks/sync_raw_events.py --dry-run
+  python databricks/sync_raw_events.py --reset --since 2026/10/12
+      # empty the Volume first (e.g. after regenerating the demo history).
+      # Safe: Blob Storage stays the source of truth.
 
 Credentials: see bl_client.py.
 """
@@ -42,8 +45,41 @@ def existing_files(ws, prefixes):
     return found
 
 
-def sync(since, dry_run=False, workers=8):
+def clear_volume(ws, workers=8):
+    """Deletes every file and folder in the Volume (not the Volume itself)."""
+    files, folders = [], []
+
+    def walk(path):
+        page_token = None
+        while True:
+            params = {"page_token": page_token} if page_token else {}
+            resp = ws.request("GET", f"/api/2.0/fs/directories{path}", params=params)
+            if resp.status_code == 404:
+                return
+            resp.raise_for_status()
+            data = resp.json()
+            for entry in data.get("contents", []):
+                if entry.get("is_directory"):
+                    folders.append(entry["path"])
+                    walk(entry["path"])
+                else:
+                    files.append(entry["path"])
+            page_token = data.get("next_page_token")
+            if not page_token:
+                return
+
+    walk(bl_client.VOLUME_PATH)
+    with ThreadPoolExecutor(max_workers=workers) as pool:
+        list(pool.map(lambda f: ws.request("DELETE", f"/api/2.0/fs/files{f}"), files))
+    for folder in sorted(folders, key=len, reverse=True):
+        ws.request("DELETE", f"/api/2.0/fs/directories{folder}")
+    print(f"Cleared {len(files)} files from {bl_client.VOLUME_PATH}")
+
+
+def sync(since, dry_run=False, workers=8, reset=False):
     ws = bl_client.Workspace()
+    if reset and not dry_run:
+        clear_volume(ws, workers)
     container = BlobServiceClient.from_connection_string(
         bl_client.storage_connection_string()
     ).get_container_client(bl_client.CONTAINER)
@@ -78,8 +114,9 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument("--since", default="2000/01/01", help="only blobs written on/after this date (YYYY/MM/DD)")
     parser.add_argument("--dry-run", action="store_true")
+    parser.add_argument("--reset", action="store_true", help="empty the Volume before syncing")
     args = parser.parse_args()
-    _, failed = sync(args.since, args.dry_run)
+    _, failed = sync(args.since, args.dry_run, reset=args.reset)
     sys.exit(1 if failed else 0)
 
 

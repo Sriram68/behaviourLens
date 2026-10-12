@@ -1,112 +1,143 @@
 # Final Demo Script
 
-A walkthrough script for the Week 17 recording, mapped directly to the proposal's
-"Live Demonstrations" checklist (`S3-C-01_BehaviorLens_Proposal.md`, Deliverables
-section) so every promised item is visibly covered. Target: 8–10 minutes.
+A 10-minute live demonstration built around one story: **BehaviorLens catches a
+real product problem before any user reports it**, with the audience generating
+part of the data from their own phones.
 
-## 0. Setup (before recording, not on camera)
+The data is eight weeks of simulated ReportHub traffic with three problems
+deliberately planted in it (see `qa/synthetic_event_generator.py`), plus whatever
+the audience does live. Say so on stage: it's a known-answer test, the same way you'd
+fire-drill an alarm. The point is that the pipeline and the AI find the planted
+problems without being told where they are.
 
-- Confirm the demo app is servable: `python -m http.server 5500` from the repo root.
-- Confirm the deployed Function is reachable: a POST to
-  `https://func-behaviorlens47209.azurewebsites.net/api/events` returns 200.
-- Have three tabs ready: Azure Portal (Blob container), Databricks workspace
-  (Workflows → Jobs and Catalog), Power BI Desktop with `BehaviorLens.pbip` open.
-- Optionally run `qa/synthetic_event_generator.py` once beforehand so Power BI has
-  fresh data to refresh into during the recording, rather than refreshing stale data.
+| Planted finding | Where it shows up |
+|---|---|
+| Release **2.4.0** breaks `/api/export`: ~45% of exports fail with a 502 (baseline 2%), users retry, then give up | Live screen export tile; Error Patterns "errors by app version"; AI anomaly narrative; Teams alert |
+| Onboarding **step 3** ("connect a data source") loses about a third of new users | User Journeys onboarding funnel; AI drop-off narrative |
+| **Scheduled Reports** is barely used; **Share Link** throws a JavaScript error | Feature Adoption "clicks by product feature"; `js_error` in the live feed |
 
-## 1. Real-time event capture (~90s)
+## T-minus 1 day: regenerate the history
 
-Proposal item: *"Real-time event capture: 10+ events across 3 flows visible in
-Azure Blob Storage."*
+The history is generated relative to "now", so regenerate it the day before (or the
+morning of) the demo so the incident sits in "this week":
 
-1. Open the demo app (`http://localhost:5500/demo-app/index.html`).
-2. Narrate the 3 flows on screen: Login & Onboarding, Core Feature Usage, Error &
-   Recovery — click through each, pointing at the live event-log panel as events fire.
-3. Switch to Azure Portal → Storage account `stbehaviorlens47209` → `raw-events`
-   container. Show a freshly-timestamped blob under today's `YYYY/MM/DD/` path,
-   open it, show the NDJSON events matching what was just clicked.
+```bash
+python qa/synthetic_event_generator.py --dry-run     # check the story summary
+python qa/synthetic_event_generator.py               # ~33k events through the live Function
+python databricks/run_pipeline.py --reset --since <today as YYYY/MM/DD>
+```
 
-## 2. Databricks pipeline (~90s)
+Then open `BehaviorLens.pbip` in Power BI Desktop, **Home → Refresh**, and save.
 
-Proposal item: *"Databricks pipeline: raw → enriched → aggregated tables, all
-queryable."*
+## T-minus 30 minutes: preflight
 
-1. Databricks workspace → Workflows → Jobs → **BehaviorLens Pipeline**. Point out
-   the 4 tasks (`ingestion` → `aggregations` → `data_quality` → `ai_insights`) and
-   click **Run now** live if time allows, or show the most recent successful run.
-2. Catalog → `workspace.default` → run a quick `SELECT COUNT(*)` against
-   `events_raw`, `events_enriched`, `session_summary`, `feature_adoption_daily`,
-   `error_summary_daily`, `qa_data_quality_results`, `ai_insights_weekly` to show
-   real row counts, not empty tables.
+```bash
+python scripts/preflight.py
+```
 
-## 3. Interactive Power BI dashboard (~2 min)
+Every line must say PASS. It also starts the SQL warehouse and runs one real Ask,
+so the first question on stage is fast. Then open:
 
-Proposal item: *"Interactive Power BI dashboard: all 4 analytics views live and
-responsive."*
+1. **Projector:** `https://sriram68.github.io/behaviourLens/demo-app/live.html`
+2. **Laptop tab 2:** Power BI Desktop with the refreshed report
+3. **Laptop tab 3:** a terminal in the repo root
+4. **Laptop tab 4:** Teams, on the channel that receives the alert
+5. **Your phone:** ReportHub, signed in, as a backup "audience"
 
-1. **Usage Trends** — hover the trend lines, use the Date Range slicer, point out
-   Active Users / Avg Session Duration responding live.
-2. **User Journeys** — click through a funnel stage, show cross-filtering into the
-   Session Share by Flow donut.
-3. **Feature Adoption** — hover the eventName × Month heatmap, point out the
-   conditional-format gradient.
-4. **Error Patterns** — click a bar in the ranked error chart, show it filtering the
-   error-share donut and trend visuals.
-5. Click **Home → Refresh** once to show a live reload against Databricks (matches
-   the "responsive" claim rather than a static screenshot).
+## 1. The problem (45s)
 
-## 4. AI insight narratives (~90s)
+> "Psiog ships apps, but nobody can say which features people use, where they get
+> stuck, or what broke last Tuesday until a user complains. Every team instruments
+> differently or not at all. BehaviorLens is one drop-in SDK plus a pipeline that
+> turns clicks into answers, and it costs nothing to run."
 
-Proposal item: *"AI insight narratives: 3 distinct usage scenarios from Gemini."*
+## 2. The audience joins (2 min)
 
-1. Switch to the **AI Insights** page. Read the top KPI row (Avg/Min Relevance
-   Score, Scenarios Generated, Last Generated) aloud.
-2. Scroll the narrative table — point out the 3 distinct scenarios (weekly
-   narrative, anomaly detection, cohort segmentation) and that each is real
-   generated text, not a placeholder.
+1. Point at the QR code on the live screen: *"Scan this, sign in with the defaults,
+   and use the app: search, export a report, try sharing a link."*
+2. As events arrive, narrate the live screen: events per minute climbing, sessions
+   count, the flow breakdown, the feed.
+3. The **Export failure rate** tile turns red with "Incident". Say: *"Some of you just
+   hit a broken export. Remember that, we'll come back to it."*
+4. Someone taps **Copy share link**: a `js_error` appears in the feed. *"Nobody wrote
+   tracking code for that. The SDK caught a real JavaScript exception on its own."*
+5. Mention privacy: the app never sends names or emails; the SDK masks any that slip
+   in and the server masks them again.
 
-## 5. Anomaly detection demo (~60s)
+## 3. Start the pipeline (15s)
 
-Proposal item: *"Anomaly detection demo: simulated error spike with AI alert
-narrative."*
+In the terminal:
 
-1. On the AI Insights page, find the `anomaly_detection` row's narrative — it
-   references the real Aug 29–Sep 1 error spike in the scale-test data (338
-   errors/day vs. a ~10/day baseline), flagged as a genuine statistical outlier
-   via z-score.
-2. Optionally cross-reference: flip to **Error Patterns**, filter the date slicer
-   to Aug 29–Sep 1, show the visible spike the narrative is describing.
+```bash
+python databricks/run_pipeline.py --since <today as YYYY/MM/DD>
+```
 
-## 6. Scale validation (~45s)
+*"This syncs the new events into Databricks and runs ingestion, aggregation, 22 data
+quality checks and the AI layer. It takes about three minutes; let's look at what's
+already there."*
 
-Proposal item: *"Scale validation: 5,000+ synthetic events processed within SLA."*
+## 4. Architecture (45s)
 
-1. State the number on camera: 12,001 events (exceeds the 5,000+ target), full
-   pipeline (ingestion → aggregation → data quality → AI insights) in ~2 minutes
-   wall clock on serverless compute.
-2. Show `docs/qa-report.md`'s scale-test section as supporting evidence if a
-   document view is convenient.
+One sentence per hop: SDK (2 KB, batching, retries, privacy) → Azure Function
+(validates, rate-limits, writes NDJSON) → Blob Storage → Databricks (Delta tables,
+Great Expectations, Gemini) → Power BI, with the live screen reading the Function
+directly for the real-time view.
 
-## 7. Cohort segmentation (~45s)
+## 5. Power BI: the story in the dashboards (2 min)
 
-Proposal item: *"Cohort segmentation: high-engagement vs low-engagement user
-identification."*
+1. **Usage Trends:** eight weeks of steady usage, weekday rhythm.
+2. **User Journeys → onboarding funnel:** *"Step 3, connect a data source, is where new
+   users disappear."*
+3. **Feature Adoption → clicks by product feature:** *"Scheduled Reports: almost
+   nobody uses it. Promote it or retire it."*
+4. **Error Patterns:** errors jump from the release date; **errors by app version**
+   shows it's essentially all 2.4.0.
 
-1. Back on the AI Insights page, read the `cohort_segmentation` narrative row —
-   states the median-event-count split (high vs. low engagement) and the
-   suggested action.
+## 6. AI insights you can trust (1.5 min)
 
-## 8. Close (~30s)
+1. **AI Insights** page: four narratives (weekly usage, anomaly, cohorts, drop-off).
+2. Point at **Facts Verified 100%**: *"Every number in these sentences was checked in
+   code against the data the model was given. If the model invents a number, the
+   pipeline rejects the narrative, asks once more naming the wrong number, and if it
+   still fails it never shows up as verified."*
+3. Switch to **Teams**: the alert card the pipeline sent when it found the spike,
+   with the release and the before/after failure rates.
 
-- One sentence on QA rigor: full regression suite (SDK, Function, E2E, Great
-  Expectations) green, plus real bugs found and fixed during testing (name 1–2
-  from `docs/qa-report.md`'s bug list to show QA wasn't just happy-path).
-- One sentence on budget: entire build stayed at ₹0 actual spend against a ₹2,500
-  ceiling, everything on free tiers even at scale.
+## 7. Ask BehaviorLens (1.5 min)
 
-## Reference docs to have open/linked in the recording description
+On the live screen:
 
-- `docs/architecture.md` — full data flow
-- `docs/qa-report.md` — test results and bugs found/fixed
-- `docs/powerbi-guide.md` — report/model configuration
-- `docs/ai-prompt-log.md` — Gemini prompts and relevance scores
+1. Click **"What is the export failure rate by app version?"**. Open *SQL and
+   result*: the generated SQL, the rows, and *"✓ All numbers verified"*.
+2. Invite a judge to ask their own question.
+3. Type **"Delete all the sessions"**: the guardrail blocks it and shows the SQL it
+   refused to run. *"It only ever runs one read-only SELECT on six allowlisted tables,
+   as a service principal that can't read or write anything else."*
+
+## 8. Close the loop (45s)
+
+By now `run_pipeline.py` has finished. In Power BI, **Home → Refresh**: today's bar
+now includes the audience's sessions, and their export failures are in the error
+counts.
+
+> "From your tap to a verified insight in a few minutes, on free tiers. 29 SDK tests,
+> 69 Function tests, 7 pipeline tests that prove the AI layer finds what we planted, 7
+> browser tests, 22 data quality checks, all in CI."
+
+## If something breaks
+
+| Problem | Fallback |
+|---|---|
+| Venue Wi-Fi is down | Phone hotspot. If the Function itself is unreachable, run it locally (`cd azure-function && func start`) and open `live.html?api=http://localhost:7071/api` |
+| Pipeline run is slow or fails | Skip section 8. The dashboards and AI page already hold the regenerated history |
+| Gemini is down or rate-limited | AI Insights page shows the narratives stored by the last run; skip the live Ask |
+| Ask times out on the first question | The warehouse was cold: preflight should have warmed it; ask again |
+| Nobody scans the QR code | Use your own phone: sign in, export twice, tap Share |
+| Everything is down | Play the recorded walkthrough |
+
+## Reference docs
+
+- `docs/pitch-notes.md`: talking points and likely questions
+- `docs/architecture.md`: full data flow
+- `docs/qa-report.md`: test results and bugs found/fixed
+- `docs/ai-prompt-log.md`: prompt versions and the fact-check method
