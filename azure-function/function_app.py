@@ -247,7 +247,7 @@ def compute_stats(events, now, minutes):
     series = []
     for i in range(minutes + 1):
         minute = start_minute + datetime.timedelta(minutes=i)
-        series.append({"minute": minute.strftime("%H:%M"), "count": per_minute.get(minute, 0)})
+        series.append({"minute": minute.isoformat(), "count": per_minute.get(minute, 0)})
 
     def export_calls(name):
         return sum(
