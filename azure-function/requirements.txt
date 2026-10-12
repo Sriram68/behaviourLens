@@ -1,2 +1,4 @@
 azure-functions==1.14.0
 azure-storage-blob
+requests
+sqlglot==30.20.0
