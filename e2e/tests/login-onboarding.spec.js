@@ -1,8 +1,8 @@
 const { test, expect } = require("@playwright/test");
-const { waitForIngest } = require("./helpers");
+const { waitForIngest, appUrl } = require("./helpers");
 
 test("login and onboarding flow reaches the live ingestion endpoint", async ({ page }) => {
-  await page.goto("/demo-app/index.html");
+  await page.goto(appUrl("/demo-app/index.html"));
 
   const ingestPromise = waitForIngest(page);
 
@@ -14,12 +14,16 @@ test("login and onboarding flow reaches the live ingestion endpoint", async ({ p
   await expect(log).toContainText("login_attempt");
   await expect(log).toContainText("login_success", { timeout: 5000 });
 
-  await page.click('#onboarding button[data-step="1"]');
-  await page.click('#onboarding button[data-step="2"]');
-  await page.click('#onboarding button[data-step="3"]');
+  for (const step of [1, 2, 3]) {
+    await page.click(`#onboarding [data-step="${step}"]`);
+  }
   await expect(log).toContainText("onboarding_step_complete");
+  await expect(page).toHaveURL(/#\/dashboard$/);
 
-  // 5 events fired, batchSize is 3, so a flush has already happened by now.
   const response = await ingestPromise;
   expect(response.status()).toBe(200);
+
+  // Privacy: the email typed into the form never leaves the browser.
+  await expect(log).not.toContainText("e2e-test@psiog.com");
+  expect(response.request().postData()).not.toContain("e2e-test@psiog.com");
 });

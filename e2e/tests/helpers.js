@@ -9,4 +9,23 @@ async function waitForIngest(page, { timeout = 10000 } = {}) {
   return response;
 }
 
-module.exports = { waitForIngest };
+/** Starts the page already signed in and onboarded, so a test can go
+ * straight to the feature it covers. */
+async function signedIn(page) {
+  await page.addInitScript(() => {
+    window.sessionStorage.setItem("rh_logged_in", "1");
+    window.localStorage.setItem("rh_onboarded_step", "3");
+  });
+}
+
+/** Demo-app URL for a test. Set BEHAVIORLENS_API to aim the app at another
+ * ingestion endpoint (e.g. a local `func start`) instead of the deployed one. */
+function appUrl(path) {
+  const api = process.env.BEHAVIORLENS_API;
+  if (!api) return path;
+  const [base, hash] = path.split("#");
+  const sep = base.includes("?") ? "&" : "?";
+  return `${base}${sep}api=${encodeURIComponent(api)}${hash ? `#${hash}` : ""}`;
+}
+
+module.exports = { waitForIngest, signedIn, appUrl };

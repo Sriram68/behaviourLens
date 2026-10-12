@@ -238,6 +238,15 @@ describe("privacy", () => {
     expect(BehaviorLens.track("feature_click")).toBe(true);
   });
 
+  test("calls onEvent with each tracked event (for debug panels)", () => {
+    const seen = [];
+    BehaviorLens.init({ endpoint: "http://localhost/api/events", onEvent: (e) => seen.push(e.eventName) });
+    BehaviorLens.track("feature_click");
+    BehaviorLens.optOut();
+    BehaviorLens.track("feature_click");
+    expect(seen).toEqual(["feature_click"]);
+  });
+
   test("attaches appVersion when configured", () => {
     BehaviorLens.init({ endpoint: "http://localhost/api/events", appVersion: "2.4.0" });
     BehaviorLens.track("feature_click");

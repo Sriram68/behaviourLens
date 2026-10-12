@@ -218,19 +218,20 @@ def test_compute_stats_counts_only_events_inside_the_window():
         _event("page_view", 1),
         _event("export_triggered", 2, session="s2", user="u2", format="csv"),
         _event("api_error", 2, session="s2", user="u2", code=502, endpoint="/api/export"),
+        _event("retry_attempt", 2, session="s2", user="u2", originalEvent="api_error", endpoint="/api/export"),
         _event("api_error", 3, code=500, endpoint="/api/reports"),
         _event("search_query", 60 * 24 * 30),  # backfilled history: excluded
     ]
     stats = function_app.compute_stats(events, NOW, 30)
 
-    assert stats["totals"] == {"events": 4, "sessions": 2, "users": 2, "errors": 2}
-    assert stats["byFlow"]["Error & Recovery"] == 2
-    assert stats["exports"] == {"attempts": 1, "failures": 1}
+    assert stats["totals"] == {"events": 5, "sessions": 2, "users": 2, "errors": 3}
+    assert stats["byFlow"]["Error & Recovery"] == 3
+    assert stats["exports"] == {"attempts": 1, "retries": 1, "failures": 1}
     assert len(stats["perMinute"]) == 31
-    assert sum(point["count"] for point in stats["perMinute"]) == 4
+    assert sum(point["count"] for point in stats["perMinute"]) == 5
     assert stats["recent"][0]["eventName"] == "page_view"  # newest first
     assert stats["recent"][0]["path"] == "/behaviourLens/demo-app/index.html#/reports"
-    assert stats["recent"][1]["detail"] == {"code": 502, "endpoint": "/api/export"}
+    assert {"code": 502, "endpoint": "/api/export"} in [r["detail"] for r in stats["recent"]]
 
 
 def test_compute_stats_ignores_unparseable_timestamps():

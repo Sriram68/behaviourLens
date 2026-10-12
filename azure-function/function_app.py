@@ -17,6 +17,8 @@ from azure.storage.blob import BlobServiceClient
 import ask
 
 app = func.FunctionApp(http_auth_level=func.AuthLevel.ANONYMOUS)
+# The storage SDK logs every HTTP request at INFO; keep the Function logs readable.
+logging.getLogger("azure").setLevel(logging.WARNING)
 
 REQUIRED_FIELDS = ("eventName", "userId", "sessionId", "timestamp", "pageUrl")
 EVENT_NAME_RE = re.compile(r"^[a-z][a-z0-9_]{1,63}$")
@@ -247,11 +249,13 @@ def compute_stats(events, now, minutes):
         minute = start_minute + datetime.timedelta(minutes=i)
         series.append({"minute": minute.strftime("%H:%M"), "count": per_minute.get(minute, 0)})
 
-    export_failures = sum(
-        1
-        for _, event in window
-        if event.get("eventName") == "api_error" and (event.get("properties") or {}).get("endpoint") == "/api/export"
-    )
+    def export_calls(name):
+        return sum(
+            1
+            for _, event in window
+            if event.get("eventName") == name and (event.get("properties") or {}).get("endpoint") == "/api/export"
+        )
+
     recent = []
     for ts, event in reversed(window[-25:]):
         props = event.get("properties") or {}
@@ -278,7 +282,12 @@ def compute_stats(events, now, minutes):
         "byEvent": dict(by_event.most_common()),
         "byFlow": dict(by_flow.most_common()),
         "perMinute": series,
-        "exports": {"attempts": by_event.get("export_triggered", 0), "failures": export_failures},
+        # Retries call /api/export again, so they count as calls too.
+        "exports": {
+            "attempts": by_event.get("export_triggered", 0),
+            "retries": export_calls("retry_attempt"),
+            "failures": export_calls("api_error"),
+        },
         "recent": recent,
     }
 

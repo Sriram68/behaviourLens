@@ -24,6 +24,7 @@
       endpoint: null,
       userId: null,
       appVersion: null,
+      onEvent: null,
       batchSize: 10,
       flushIntervalMs: 2000,
       maxQueueSize: 500,
@@ -47,16 +48,9 @@
     });
   }
 
-  function storage(kind) {
+  function getOrCreate(kind, key) {
     try {
-      return window[kind];
-    } catch (e) {
-      return null;
-    }
-  }
-
-  function getOrCreate(store, key) {
-    try {
+      var store = window[kind];
       var existing = store.getItem(key);
       if (existing) return existing;
       var created = generateId();
@@ -68,17 +62,17 @@
   }
 
   function getSessionId() {
-    return getOrCreate(storage("sessionStorage"), SESSION_KEY);
+    return getOrCreate("sessionStorage", SESSION_KEY);
   }
 
   function getUserId() {
     if (state.userId) return state.userId;
-    return getOrCreate(storage("localStorage"), USER_KEY);
+    return getOrCreate("localStorage", USER_KEY);
   }
 
   function isOptedOut() {
     try {
-      return storage("localStorage").getItem(OPT_OUT_KEY) === "1";
+      return localStorage.getItem(OPT_OUT_KEY) === "1";
     } catch (e) {
       return false;
     }
@@ -123,9 +117,9 @@
   function persistQueue() {
     try {
       if (state.queue.length) {
-        storage("localStorage").setItem(QUEUE_KEY, JSON.stringify(state.queue));
+        localStorage.setItem(QUEUE_KEY, JSON.stringify(state.queue));
       } else {
-        storage("localStorage").removeItem(QUEUE_KEY);
+        localStorage.removeItem(QUEUE_KEY);
       }
     } catch (e) {
       // Storage full or unavailable: the in-memory queue still retries.
@@ -134,8 +128,8 @@
 
   function restoreQueue() {
     try {
-      var saved = JSON.parse(storage("localStorage").getItem(QUEUE_KEY) || "[]");
-      storage("localStorage").removeItem(QUEUE_KEY);
+      var saved = JSON.parse(localStorage.getItem(QUEUE_KEY) || "[]");
+      localStorage.removeItem(QUEUE_KEY);
       return Array.isArray(saved) ? saved : [];
     } catch (e) {
       return [];
@@ -220,10 +214,7 @@
 
   function trackPageView() {
     if (!state.initialized || !state.auto.pageViews) return;
-    safeTrack("page_view", {
-      path: window.location.pathname + window.location.hash,
-      title: document.title,
-    });
+    safeTrack("page_view", { path: window.location.pathname + window.location.hash });
   }
 
   function propsFromDataset(el) {
@@ -286,7 +277,7 @@
     }
     if (state.timer) clearInterval(state.timer);
     state = defaults();
-    ["endpoint", "userId", "appVersion", "batchSize", "flushIntervalMs", "maxQueueSize"].forEach(function (key) {
+    ["endpoint", "userId", "appVersion", "batchSize", "flushIntervalMs", "maxQueueSize", "onEvent"].forEach(function (key) {
       if (config[key]) state[key] = config[key];
     });
     state.maskPII = config.maskPII !== false;
@@ -316,6 +307,7 @@
     }
     state.queue.push(event);
     capQueue();
+    if (state.onEvent) state.onEvent(event);
     if (state.queue.length >= state.batchSize) {
       flush(false);
     }
@@ -324,7 +316,7 @@
 
   function optOut() {
     try {
-      storage("localStorage").setItem(OPT_OUT_KEY, "1");
+      localStorage.setItem(OPT_OUT_KEY, "1");
     } catch (e) {
       // Without storage the opt-out lasts for this page only.
     }
@@ -334,7 +326,7 @@
 
   function optIn() {
     try {
-      storage("localStorage").removeItem(OPT_OUT_KEY);
+      localStorage.removeItem(OPT_OUT_KEY);
     } catch (e) {
       // Nothing persisted, nothing to clear.
     }
