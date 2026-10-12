@@ -38,6 +38,18 @@ jobs:
       - run: pip install -r requirements-dev.txt
       - run: pytest tests/ --cov=function_app --cov=ask --cov=factcheck --cov-report=term-missing
 
+  pipeline-tests:
+    # The insight layer must find the planted incident, drop-off and dead
+    # feature in the simulated history (pure pandas, no Databricks needed).
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - run: pip install pandas==2.2.3 pytest pytest-cov
+      - run: pytest databricks/tests --cov=insights --cov-report=term-missing
+
   e2e-tests:
     runs-on: ubuntu-latest
     # Promoted to merge-blocking: stable across every run since introduction

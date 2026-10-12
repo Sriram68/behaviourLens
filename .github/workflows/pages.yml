@@ -1,0 +1,38 @@
+name: Pages
+
+# Publishes only the demo app and the SDK it loads (not the whole repo):
+#   /demo-app/index.html  ReportHub, the instrumented app the audience uses
+#   /demo-app/live.html   BehaviorLens Live, the presenter screen
+on:
+  push:
+    branches: [main]
+    paths: ["demo-app/**", "sdk/src/**", ".github/workflows/pages.yml"]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}demo-app/live.html
+    steps:
+      - uses: actions/checkout@v4
+      - name: Assemble site
+        run: |
+          mkdir -p _site/demo-app _site/sdk/src
+          cp demo-app/* _site/demo-app/
+          cp sdk/src/behaviorlens.js _site/sdk/src/
+          cp demo-app/landing.html _site/index.html
+      - uses: actions/configure-pages@v5
+      - uses: actions/upload-pages-artifact@v3
+      - id: deployment
+        uses: actions/deploy-pages@v4
