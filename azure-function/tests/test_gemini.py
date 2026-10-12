@@ -61,6 +61,16 @@ def test_does_not_retry_permanent_errors(mock_post):
     assert mock_post.call_count == 1
 
 
+@patch("gemini.requests.post")
+def test_thinking_level_is_sent_only_to_gemini_3_models(mock_post):
+    mock_post.side_effect = [_resp(503), _resp(200, "lite")]
+    gemini.generate("hi", "key", models=["gemini-3.6-flash", "gemini-flash-lite-latest"], attempts_per_model=1,
+                    thinking_level="low", sleep=lambda s: None)
+    configs = [call.kwargs["json"]["generationConfig"] for call in mock_post.call_args_list]
+    assert configs[0]["thinkingConfig"] == {"thinkingLevel": "low"}
+    assert "thinkingConfig" not in configs[1]
+
+
 def test_databricks_copy_is_identical():
     here = Path(__file__).resolve().parents[1] / "gemini.py"
     notebook_copy = Path(__file__).resolve().parents[2] / "databricks" / "notebooks" / "gemini.py"

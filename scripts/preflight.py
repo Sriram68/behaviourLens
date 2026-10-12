@@ -78,11 +78,26 @@ def page(url):
     return run
 
 
-def ask():
-    status, _, body = http(f"{API}/ask", method="POST", body={"question": "How many sessions were there in total?"}, timeout=180)
-    data = json.loads(body)
-    check_ = data.get("factCheck", {})
-    return f"\"{data.get('answer', '')[:80]}\" ({check_.get('verified')}/{check_.get('total')} verified)"
+# Must match SUGGESTIONS in demo-app/live.js (a test enforces it). Asking them
+# here warms the SQL warehouse and the Function's answer cache, so the chips
+# answer instantly on stage.
+SUGGESTED_QUESTIONS = [
+    "Which feature is used least?",
+    "What is the export failure rate by app version?",
+    "Where do new users drop off in onboarding?",
+    "How many errors happened each day this week?",
+]
+
+
+def ask(question):
+    def run():
+        _, _, body = http(f"{API}/ask", method="POST", body={"question": question}, timeout=240)
+        data = json.loads(body)
+        check_ = data.get("factCheck", {})
+        if check_.get("unverified"):
+            raise RuntimeError(f"unverified numbers: {check_['unverified']}")
+        return f"{check_.get('verified')}/{check_.get('total')} verified: {data.get('answer', '')[:70]}"
+    return run
 
 
 def databricks_checks():
@@ -130,7 +145,8 @@ def main():
     check("Live view on GitHub Pages", page(f"{PAGES}/live.html"))
     databricks_checks()
     if not args.no_ask:
-        check("Ask BehaviorLens round trip", ask, required=False)
+        for question in SUGGESTED_QUESTIONS:
+            check(f"Ask: {question}", ask(question), required=False)
 
     failed = [r for r in results if not r[0] and r[1]]
     print(f"\n{len(results) - len(failed)}/{len(results)} checks passed" + (" - NOT demo-ready" if failed else " - demo-ready"))

@@ -27,9 +27,9 @@ MAX_ROWS = 100
 TABLES = {
     "events_enriched": (
         "one row per event: eventName, userId, sessionId, event_timestamp, pageUrl, appVersion, "
-        "properties STRUCT<feature, query, results, filter, format, code, endpoint, path, step, "
-        "originalEvent, message>, session_event_seq, session_start_ts, session_end_ts, "
-        "session_duration_seconds"
+        "feature, onboarding_step, error_code, endpoint (typed copies of the common properties; prefer "
+        "them), properties STRUCT<query, results, filter, format, path, originalEvent, message>, "
+        "session_event_seq, session_start_ts, session_end_ts, session_duration_seconds"
     ),
     "session_summary": (
         "one row per session: sessionId, userId, session_start_ts, session_end_ts, "
@@ -69,6 +69,16 @@ Tables (catalog {catalog}, schema {schema}; refer to them by bare name):
 {tables}
 
 Event names in events_enriched.eventName: {events}
+
+What the events mean in this app (ReportHub):
+- An export call is an export_triggered event, or a retry_attempt whose endpoint = '/api/export'.
+  A failed export is an api_error whose endpoint = '/api/export' (usually error_code 502).
+  Export failure rate = failed exports / export calls, e.g. per appVersion or per day.
+- Error events are api_error, page_not_found, retry_attempt and js_error.
+- Onboarding: new users fire onboarding_step_complete with onboarding_step 1, 2, 3; count distinct
+  userId per step to see where they drop off.
+- feature_click.feature is the product feature used (dashboard, reports, saved_views, share_link,
+  scheduled_reports).
 
 Rules:
 - One SELECT statement only. No DDL/DML. Only the tables above.
@@ -168,13 +178,19 @@ def guard_sql(sql):
     return root.sql(dialect="databricks")
 
 
-def call_gemini(prompt, json_mode=False, temperature=0.2):
-    # A person is waiting on Ask, so fewer retries per model than the batch
-    # pipeline, but the same fallback to the next model.
-    models = [os.environ["GEMINI_MODEL"]] + gemini.MODELS if os.environ.get("GEMINI_MODEL") else None
+# Narrating a handful of result rows is easy and the fact check guards every
+# number, so the fastest model goes first.
+NARRATOR_MODELS = ["gemini-flash-lite-latest", "gemini-3.6-flash", "gemini-flash-latest"]
+
+
+def call_gemini(prompt, json_mode=False, temperature=0.2, models=None):
+    # A person is waiting on Ask: low thinking, and on a 503/429 move straight
+    # to the next model instead of sleeping (the batch pipeline is the patient one).
+    if models is None and os.environ.get("GEMINI_MODEL"):
+        models = [os.environ["GEMINI_MODEL"]] + gemini.MODELS
     text, _ = gemini.generate(
         prompt, os.environ["GEMINI_API_KEY"], temperature=temperature, json_mode=json_mode,
-        models=models, attempts_per_model=2, timeout=45,
+        models=models, attempts_per_model=1, timeout=45, thinking_level="low",
     )
     return text
 
@@ -219,25 +235,50 @@ def run_sql(sql):
 
 
 def _parse_json(text):
-    text = text.strip()
-    if text.startswith("```"):
-        text = text.strip("`")
-        text = text[text.index("{"):]
-    return json.loads(text)
+    """First JSON object in the model's reply. Lenient about code fences, text
+    after the object, and raw newlines inside strings (strict=False), which
+    models emit when they pretty-print SQL."""
+    start = text.find("{")
+    if start < 0:
+        raise ValueError("model reply contained no JSON object")
+    obj, _ = json.JSONDecoder(strict=False).raw_decode(text[start:])
+    return obj
+
+
+# Answers are stable between pipeline runs, so repeated questions (and the
+# live screen's suggested ones, warmed by scripts/preflight.py) come back instantly.
+CACHE_SECONDS = 900
+_cache = {}
+
+
+def _cache_key(question):
+    return " ".join(question.lower().split()).rstrip("?.! ")
 
 
 def answer_question(question):
+    key = _cache_key(question)
+    hit = _cache.get(key)
+    if hit and time.monotonic() - hit[0] < CACHE_SECONDS:
+        return {**hit[1], "question": question, "cached": True}
+    result = _answer(question)
+    _cache[key] = (time.monotonic(), result)
+    return {**result, "cached": False}
+
+
+def _plan(question):
     tables = "\n".join(f"- {name}: {desc}" for name, desc in TABLES.items())
-    plan = _parse_json(
-        call_gemini(
-            SQL_PROMPT.format(
-                catalog=CATALOG, schema=SCHEMA, tables=tables, events=EVENT_NAMES,
-                max_rows=MAX_ROWS, question=question,
-            ),
-            json_mode=True,
-            temperature=0,
-        )
+    prompt = SQL_PROMPT.format(
+        catalog=CATALOG, schema=SCHEMA, tables=tables, events=EVENT_NAMES, max_rows=MAX_ROWS, question=question
     )
+    try:
+        return _parse_json(call_gemini(prompt, json_mode=True, temperature=0))
+    except ValueError:
+        # One more try: a different sample (or the next model) usually returns clean JSON.
+        return _parse_json(call_gemini(prompt, json_mode=True, temperature=0.2))
+
+
+def _answer(question):
+    plan = _plan(question)
     if not plan.get("sql"):
         return {
             "question": question,
@@ -245,6 +286,7 @@ def answer_question(question):
             "columns": [],
             "rows": [],
             "answer": plan.get("reason") or "That question can't be answered from the BehaviorLens tables.",
+            "declined": True,
             "factCheck": {"total": 0, "verified": 0, "unverified": []},
         }
 
@@ -258,7 +300,8 @@ def answer_question(question):
         answer = call_gemini(
             ANSWER_PROMPT.format(
                 feedback=feedback, question=question, columns=json.dumps(columns), rows=json.dumps(rows[:50])
-            )
+            ),
+            models=NARRATOR_MODELS,
         )
         check = factcheck.verify(answer, facts)
         if not check["unverified"]:
@@ -275,5 +318,6 @@ def answer_question(question):
         "columns": columns,
         "rows": rows,
         "answer": answer,
+        "declined": False,
         "factCheck": check,
     }

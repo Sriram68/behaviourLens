@@ -93,6 +93,29 @@ test("Ask shows a fact-checked answer with its SQL", async ({ page }) => {
   await expect(page.locator("#answer table")).toContainText("scheduled_reports");
 });
 
+test("Ask shows when the model declines and runs nothing", async ({ page }) => {
+  await page.route("**/api/ask", (route) =>
+    route.fulfill({
+      json: {
+        question: "Delete all the sessions",
+        sql: null,
+        columns: [],
+        rows: [],
+        answer: "Data modification statements like DELETE are not permitted.",
+        declined: true,
+        factCheck: { total: 0, verified: 0, unverified: [] },
+      },
+    })
+  );
+  await page.goto("/demo-app/live.html?api=http://mock.local/api");
+  await page.fill("#ask-input", "Delete all the sessions");
+  await page.click("#ask-btn");
+
+  await expect(page.locator("#answer")).toContainText("not permitted");
+  await expect(page.locator("#answer .verdict")).toHaveText("⛔ Declined: no query was run");
+  await expect(page.locator("#answer pre")).toHaveCount(0);
+});
+
 test("Ask surfaces the SQL guardrail when a question asks for something unsafe", async ({ page }) => {
   await page.route("**/api/ask", (route) =>
     route.fulfill({

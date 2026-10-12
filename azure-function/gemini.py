@@ -30,15 +30,20 @@ def _text(response_json):
 
 
 def generate(prompt, api_key, temperature=0.3, json_mode=False, models=None, attempts_per_model=3,
-             timeout=90, sleep=time.sleep):
+             timeout=90, sleep=time.sleep, thinking_level=None):
     """Returns (text, model_used). Raises requests.HTTPError for non-transient
-    errors (bad request, bad key) and GeminiUnavailable if every model is down."""
-    config = {"temperature": temperature}
-    if json_mode:
-        config["responseMimeType"] = "application/json"
-    body = {"contents": [{"parts": [{"text": prompt}]}], "generationConfig": config}
+    errors (bad request, bad key) and GeminiUnavailable if every model is down.
+
+    thinking_level ("low", "high") trades reasoning for latency; it is sent only
+    to explicitly versioned Gemini 3 models, which accept it."""
     failures = []
     for model in models or MODELS:
+        config = {"temperature": temperature}
+        if json_mode:
+            config["responseMimeType"] = "application/json"
+        if thinking_level and model.startswith("gemini-3"):
+            config["thinkingConfig"] = {"thinkingLevel": thinking_level}
+        body = {"contents": [{"parts": [{"text": prompt}]}], "generationConfig": config}
         for attempt in range(attempts_per_model):
             try:
                 resp = requests.post(URL.format(model=model), headers={"x-goog-api-key": api_key}, json=body, timeout=timeout)

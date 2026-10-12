@@ -360,13 +360,15 @@ function renderAnswer(data, status) {
   }
   answerEl.appendChild(el("p", data.answer));
   const check = data.factCheck || { total: 0, verified: 0, unverified: [] };
-  if (!check.total) answerEl.appendChild(el("span", "No numbers to verify", "verdict warn"));
+  if (data.declined) answerEl.appendChild(el("span", "⛔ Declined: no query was run", "verdict bad"));
+  else if (!check.total) answerEl.appendChild(el("span", "No numbers to verify", "verdict warn"));
   else if (!check.unverified.length)
     answerEl.appendChild(el("span", `✓ All ${check.total} numbers verified against the query result`, "verdict good"));
   else
     answerEl.appendChild(
       el("span", `⚠ ${check.unverified.length} of ${check.total} numbers not found in the result: ${check.unverified.join(", ")}`, "verdict bad")
     );
+  if (data.cached) answerEl.appendChild(el("span", " · answered from cache (same question in the last 15 min)", "muted"));
   if (data.sql) {
     const details = el("details");
     details.append(el("summary", "SQL and result"), el("pre", data.sql), resultTable(data.columns, data.rows));

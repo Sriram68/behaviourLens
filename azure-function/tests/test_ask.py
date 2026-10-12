@@ -6,6 +6,11 @@ import pytest
 import ask
 
 
+@pytest.fixture(autouse=True)
+def empty_cache():
+    ask._cache.clear()
+
+
 @pytest.fixture
 def configured(monkeypatch):
     for key, value in {
@@ -84,7 +89,8 @@ def test_call_gemini_uses_the_resilient_client(mock_generate, configured, monkey
     assert ask.call_gemini("hello", json_mode=True) == "answer"
     args, kwargs = mock_generate.call_args
     assert args == ("hello", "test-key")
-    assert kwargs["json_mode"] is True and kwargs["models"] is None and kwargs["attempts_per_model"] == 2
+    assert kwargs["json_mode"] is True and kwargs["models"] is None
+    assert kwargs["attempts_per_model"] == 1 and kwargs["thinking_level"] == "low"
 
     monkeypatch.setenv("GEMINI_MODEL", "gemini-test")
     ask.call_gemini("hello")
@@ -135,8 +141,10 @@ def test_is_configured_requires_every_setting(configured, monkeypatch):
 def test_answer_question_runs_guarded_sql_and_fact_checks_the_answer(monkeypatch):
     prompts = []
 
-    def fake_gemini(prompt, json_mode=False, temperature=0.2):
+    def fake_gemini(prompt, json_mode=False, temperature=0.2, models=None):
         prompts.append(prompt)
+        if not json_mode:
+            assert models == ask.NARRATOR_MODELS
         if json_mode:
             return "```json\n" + json.dumps({"sql": "SELECT feature, uses FROM feature_usage_daily"}) + "\n```"
         if len(prompts) == 2:
@@ -159,12 +167,53 @@ def test_answer_question_runs_guarded_sql_and_fact_checks_the_answer(monkeypatch
     assert "numbers not present in the result: 40" in prompts[2]
 
 
+def test_sql_prompt_teaches_the_domain_definitions(monkeypatch):
+    prompts = []
+    monkeypatch.setattr(ask, "call_gemini", lambda p, **k: prompts.append(p) or json.dumps({"sql": None, "reason": "n/a"}))
+    ask.answer_question("What is the export failure rate by app version?")
+    assert "endpoint = '/api/export'" in prompts[0]
+    assert "onboarding_step" in prompts[0]
+
+
+@pytest.mark.parametrize(
+    "reply",
+    [
+        '```json\n{"sql": "SELECT 1"}\n```',
+        '{"sql": "SELECT feature\n  FROM feature_usage_daily"}',  # raw newline inside the string
+        'Here you go: {"sql": "SELECT 1"} -- hope that helps',
+    ],
+)
+def test_plan_parsing_is_lenient(reply):
+    assert ask._parse_json(reply)["sql"].startswith("SELECT")
+
+
+def test_plan_is_retried_once_when_the_reply_is_not_json(monkeypatch):
+    replies = iter(["sorry, no json", json.dumps({"sql": None, "reason": "n/a"})])
+    monkeypatch.setattr(ask, "call_gemini", lambda *a, **k: next(replies))
+    assert ask.answer_question("anything at all")["declined"] is True
+
+
+def test_repeated_questions_are_served_from_cache(monkeypatch):
+    calls = []
+    monkeypatch.setattr(ask, "_answer", lambda q: calls.append(q) or {"question": q, "answer": "42 sessions"})
+    first = ask.answer_question("How many sessions?")
+    again = ask.answer_question("  how many SESSIONS ")
+    assert calls == ["How many sessions?"]
+    assert (first["cached"], again["cached"]) == (False, True)
+    assert again["question"] == "  how many SESSIONS "
+
+    monkeypatch.setattr(ask.time, "monotonic", lambda: 10**9)
+    ask.answer_question("How many sessions?")
+    assert len(calls) == 2  # expired after CACHE_SECONDS
+
+
 def test_answer_question_explains_when_the_question_is_out_of_scope(monkeypatch):
     monkeypatch.setattr(
         ask, "call_gemini", lambda *a, **k: json.dumps({"sql": None, "reason": "No revenue data is tracked."})
     )
     result = ask.answer_question("What was revenue last quarter?")
     assert result["sql"] is None
+    assert result["declined"] is True
     assert result["answer"] == "No revenue data is tracked."
 
 
@@ -192,3 +241,16 @@ def test_read_only_grants_cover_exactly_the_allowlisted_tables():
     finally:
         sys.path.remove(str(databricks_dir))
     assert sorted(module.TABLES) == sorted(ask.TABLES)
+
+
+def test_preflight_warms_exactly_the_live_screens_suggested_questions():
+    import re
+    from pathlib import Path
+
+    root = Path(__file__).resolve().parents[2]
+    live_js = (root / "demo-app" / "live.js").read_text(encoding="utf-8")
+    preflight = (root / "scripts" / "preflight.py").read_text(encoding="utf-8")
+    block = live_js[live_js.index("const SUGGESTIONS = ["):]
+    suggestions = re.findall(r'"([^"]+\?)"', block[: block.index("];")])
+    warmed = re.findall(r'"([^"]+\?)"', preflight[preflight.index("SUGGESTED_QUESTIONS = ["):])[: len(suggestions)]
+    assert suggestions and warmed == suggestions
