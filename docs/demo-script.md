@@ -24,7 +24,7 @@ morning of) the demo so the incident sits in "this week":
 ```bash
 python qa/synthetic_event_generator.py --dry-run     # check the story summary
 python qa/synthetic_event_generator.py               # ~33k events through the live Function
-python databricks/run_pipeline.py --reset --since <today as YYYY/MM/DD>
+python databricks/run_pipeline.py --reset --since <today as YYYY/MM/DD> --alert never
 ```
 
 Then, **in this order**:
@@ -87,6 +87,10 @@ python databricks/run_pipeline.py --since <today as YYYY/MM/DD>
 quality checks and the AI layer. It takes about three minutes; let's look at what's
 already there."*
 
+This run uses the default alert mode (once per incident). The morning regeneration ran
+with `--alert never`, so this is the first time the incident is alerted: the Teams card
+arrives when the AI step finishes, about three minutes from now.
+
 ## 4. Architecture (45s)
 
 One sentence per hop: SDK (2 KB, batching, retries, privacy) → Azure Function
@@ -111,8 +115,12 @@ directly for the real-time view.
    code against the data the model was given. If the model invents a number, the
    pipeline rejects the narrative, asks once more naming the wrong number, and if it
    still fails it never shows up as verified."*
-3. Switch to **Teams**: the alert card the pipeline sent when it found the spike,
-   with the release and the before/after failure rates.
+3. Switch to **Teams**: the alert card the pipeline just posted when it found the
+   spike: the verified narrative, when it started, the release, export failures before
+   vs since, sessions abandoned, the fact-check line, and a button to the live screen.
+   *"The team hears about it in their channel, with numbers that have been checked, and
+   only once per incident: a re-run doesn't spam them."*
+   (To show it again: `python databricks/run_pipeline.py --skip-sync --alert always`.)
 
 ## 7. Ask BehaviorLens (1.5 min)
 

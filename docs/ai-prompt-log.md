@@ -53,9 +53,16 @@ Scores for v2 are recorded per run in `ai_insights_history`
 ### Teams alert
 
 When `anomaly_detection.alert` is true and its narrative verified, the notebook
-posts an adaptive card (narrative, release, export failure rate before/since,
-fact-check line, link to the live view) to the webhook in the optional secret
-`behaviorlens/teams_webhook_url`. The outcome is stored in `alert_status`.
+posts an adaptive card (narrative, start date, release, export failure rate
+before/since, sessions abandoned, fact-check line, link to the live view) to the
+Teams Workflows webhook in the secret `behaviorlens/teams_webhook_url`.
+
+It alerts **once per incident**: the incident key is the release version plus the
+first flagged day, and every sent alert is recorded in `ai_alert_log`. The
+`alert_mode` widget (`run_pipeline.py --alert`) overrides this: `never` while
+regenerating demo data, `always` to re-send. The outcome of every run is stored in
+`alert_status` (`sent`, `skipped: already alerted ...`, `suppressed`, `held: narrative
+failed fact check`, ...).
 
 ### Ask BehaviorLens (`azure-function/ask.py`)
 

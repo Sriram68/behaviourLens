@@ -11,7 +11,9 @@
 # MAGIC verified. A second Gemini call still scores relevance (0-100) as a softer signal.
 # MAGIC
 # MAGIC When the anomaly is current, a verified alert goes to Teams if the secret
-# MAGIC `behaviorlens/teams_webhook_url` exists. Requires `behaviorlens/gemini_api_key`.
+# MAGIC `behaviorlens/teams_webhook_url` exists: once per incident (release + first flagged day),
+# MAGIC tracked in `ai_alert_log`. The `alert_mode` widget overrides that: `never` (e.g. while
+# MAGIC regenerating demo data) or `always` (re-send). Requires `behaviorlens/gemini_api_key`.
 # MAGIC Run `01_ingestion`, `02_aggregations` and `03_data_quality` first.
 
 # COMMAND ----------
@@ -19,9 +21,11 @@
 dbutils.widgets.text("catalog", "workspace", "Catalog")
 dbutils.widgets.text("schema", "default", "Schema")
 dbutils.widgets.text("live_url", "https://sriram68.github.io/behaviourLens/demo-app/live.html", "Live dashboard URL")
+dbutils.widgets.dropdown("alert_mode", "once", ["once", "always", "never"], "Teams alert mode")
 catalog = dbutils.widgets.get("catalog")
 schema = dbutils.widgets.get("schema")
 live_url = dbutils.widgets.get("live_url")
+alert_mode = dbutils.widgets.get("alert_mode")
 spark.sql(f"USE CATALOG {catalog}")
 spark.sql(f"USE SCHEMA {schema}")
 spark.conf.set("spark.sql.session.timeZone", "UTC")
@@ -131,6 +135,8 @@ for scenario, facts in packs.items():
 
 def teams_card(narrative, facts, check_line):
     rows = []
+    if facts.get("first_flagged_day"):
+        rows.append({"title": "Started", "value": facts["first_flagged_day"]})
     if facts.get("latest_release"):
         release = facts["latest_release"]
         rows.append({"title": "Latest release", "value": f"{release['version']} ({release['date']})"})
@@ -139,6 +145,11 @@ def teams_card(narrative, facts, check_line):
             "title": "Export failure rate",
             "value": f"{facts['export_failure_rate_before_release_pct']}% before, "
                      f"{facts['export_failure_rate_since_release_pct']}% since",
+        })
+    if facts.get("sessions_abandoned_after_export_failure"):
+        rows.append({
+            "title": "Sessions abandoned",
+            "value": f"{facts['sessions_abandoned_after_export_failure']} after a failed export",
         })
     rows.append({"title": "Fact check", "value": check_line})
     return {
@@ -164,10 +175,22 @@ def teams_card(narrative, facts, check_line):
 
 anomaly = packs["anomaly_detection"]
 anomaly_row = next(r for r in results if r["scenario"] == "anomaly_detection")
+release = anomaly.get("latest_release") or {}
+# One incident = the release it lines up with + the day it started; alert once per incident.
+incident_key = f"{release.get('version', 'n/a')}|{anomaly.get('first_flagged_day', 'n/a')}"
+spark.sql("CREATE TABLE IF NOT EXISTS ai_alert_log (incident_key STRING, sent_at TIMESTAMP)")
+already_sent = spark.sql(
+    "SELECT max(sent_at) AS sent_at FROM ai_alert_log WHERE incident_key = :key", args={"key": incident_key}
+).first()["sent_at"]
+
 alert_status = "not needed: no current anomaly"
 if anomaly["alert"]:
     if anomaly_row["status"] != "verified":
         alert_status = "held: narrative failed fact check"
+    elif alert_mode == "never":
+        alert_status = "suppressed: alert_mode=never"
+    elif alert_mode == "once" and already_sent is not None:
+        alert_status = f"skipped: already alerted for {incident_key} at {already_sent:%Y-%m-%d %H:%M} UTC"
     else:
         try:
             webhook = dbutils.secrets.get(scope="behaviorlens", key="teams_webhook_url")
@@ -182,7 +205,11 @@ if anomaly["alert"]:
                 alert_status = "sent" if resp.status_code < 300 else f"failed: HTTP {resp.status_code}"
             except requests.RequestException as err:
                 alert_status = f"failed: {type(err).__name__}"
-print(f"Teams alert: {alert_status}")
+            if alert_status == "sent":
+                spark.sql(
+                    "INSERT INTO ai_alert_log VALUES (:key, current_timestamp())", args={"key": incident_key}
+                )
+print(f"Teams alert ({alert_mode}, incident {incident_key}): {alert_status}")
 
 # COMMAND ----------
 

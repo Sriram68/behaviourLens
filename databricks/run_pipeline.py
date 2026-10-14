@@ -5,8 +5,12 @@ reporting every task. Afterwards, refresh Power BI (Home -> Refresh).
 
   python databricks/run_pipeline.py --since 2026/10/12
   python databricks/run_pipeline.py --skip-sync          # just re-run the job
-  python databricks/run_pipeline.py --reset --since 2026/10/12
-      # after regenerating the demo history: empty the Volume, sync only today's blobs
+  python databricks/run_pipeline.py --reset --since 2026/10/12 --alert never
+      # after regenerating the demo history: empty the Volume, sync only today's blobs,
+      # and keep the Teams alert for the on-stage run
+
+--alert once|always|never sets the Teams alert mode (default: the notebook's
+"once", i.e. one alert per incident).
 
 Credentials: see bl_client.py.
 """
@@ -19,9 +23,12 @@ import bl_client
 from sync_raw_events import sync
 
 
-def run_job(ws):
+def run_job(ws, alert_mode=None):
     job = ws.find_job()
-    run = ws.call("POST", "/api/2.1/jobs/run-now", json={"job_id": job["job_id"]})
+    body = {"job_id": job["job_id"]}
+    if alert_mode:
+        body["notebook_params"] = {"alert_mode": alert_mode}
+    run = ws.call("POST", "/api/2.1/jobs/run-now", json=body)
     started = time.monotonic()
     print(f"Started '{bl_client.JOB_NAME}' (run {run['run_id']})")
     last_line = None
@@ -51,13 +58,14 @@ def main():
     parser.add_argument("--since", default="2000/01/01", help="sync blobs written on/after YYYY/MM/DD")
     parser.add_argument("--skip-sync", action="store_true")
     parser.add_argument("--reset", action="store_true", help="empty the Volume before syncing")
+    parser.add_argument("--alert", choices=["once", "always", "never"], help="Teams alert mode for this run")
     args = parser.parse_args()
 
     if not args.skip_sync:
         _, failed = sync(args.since, reset=args.reset)
         if failed:
             sys.exit("Sync had failures; not starting the job.")
-    ok = run_job(bl_client.Workspace())
+    ok = run_job(bl_client.Workspace(), args.alert)
     if ok:
         print("Done. Refresh Power BI (Home -> Refresh) to pull the new tables.")
     sys.exit(0 if ok else 1)
