@@ -27,7 +27,15 @@ python qa/synthetic_event_generator.py               # ~33k events through the l
 python databricks/run_pipeline.py --reset --since <today as YYYY/MM/DD>
 ```
 
-Then open `BehaviorLens.pbip` in Power BI Desktop, **Home → Refresh**, and save.
+Then, **in this order**:
+
+1. `python scripts/preflight.py --no-ask` — among other checks it starts the Databricks SQL
+   warehouse. Power BI Desktop hangs on "Working on it" if it opens the project while the
+   warehouse is asleep (it auto-stops after 10 idle minutes).
+2. Open `BehaviorLens.pbip` in Power BI Desktop, click **Home → Refresh** (about 30 s), then **Save**.
+3. Spot-check: Error Patterns shows the spike at the right of "Total Errors by Date" and
+   "Export failure rate by app version" at ~40% for 2.4.0; AI Insights shows 4 narratives,
+   all `verified`.
 
 ## T-minus 10 minutes: preflight
 

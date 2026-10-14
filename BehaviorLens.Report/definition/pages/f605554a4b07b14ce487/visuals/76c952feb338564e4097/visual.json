@@ -5,8 +5,8 @@
     "x": 24.22727860852849,
     "y": 169.59095025969944,
     "z": 1001,
-    "height": 523.9148999094286,
-    "width": 1232.562799208887
+    "height": 523.91489990942864,
+    "width": 1232.5627992088871
   },
   "visual": {
     "visualType": "tableEx",
@@ -27,20 +27,6 @@
               },
               "queryRef": "ai_insights_weekly.scenario",
               "nativeQueryRef": "scenario"
-            },
-            {
-              "field": {
-                "Column": {
-                  "Expression": {
-                    "SourceRef": {
-                      "Entity": "ai_insights_weekly"
-                    }
-                  },
-                  "Property": "narrative"
-                }
-              },
-              "queryRef": "ai_insights_weekly.narrative",
-              "nativeQueryRef": "narrative"
             },
             {
               "field": {
@@ -83,6 +69,20 @@
               },
               "queryRef": "ai_insights_weekly.facts_total",
               "nativeQueryRef": "facts_total"
+            },
+            {
+              "field": {
+                "Column": {
+                  "Expression": {
+                    "SourceRef": {
+                      "Entity": "ai_insights_weekly"
+                    }
+                  },
+                  "Property": "narrative"
+                }
+              },
+              "queryRef": "ai_insights_weekly.narrative",
+              "nativeQueryRef": "narrative"
             },
             {
               "field": {

@@ -9,6 +9,21 @@ table ai_insights_weekly
 		formatString: 0%
 		lineageTag: 329ca370-fa0c-4e64-a68b-2cd388723515
 
+	/// AI insight scenarios produced by the latest pipeline run.
+	measure 'Scenarios Generated' = COUNTROWS(ai_insights_weekly)
+		formatString: 0
+		lineageTag: 01bf4154-be1a-41ab-8436-6fbb9671dd40
+
+	/// Average LLM-judged relevance (0-100). A soft signal; the hard gate is the deterministic fact check.
+	measure 'Avg Relevance Score' = AVERAGE(ai_insights_weekly[relevance_score])
+		formatString: 0
+		lineageTag: 95bbd470-0cae-4956-8798-e9f00a7a1ab7
+
+	/// When the latest AI insights were generated (UTC).
+	measure 'Last Generated' = MAX(ai_insights_weekly[generated_at])
+		formatString: dd mmm yyyy hh:nn
+		lineageTag: 6acc4311-6684-47ab-971e-ada15f421eb2
+
 	column scenario
 		dataType: string
 		lineageTag: 635e7066-c66a-4eee-a564-f54f7cc10997
@@ -73,6 +88,14 @@ table ai_insights_weekly
 		dataType: string
 		lineageTag: 03e8766f-a3ac-41bb-a529-6f0500735379
 		sourceColumn: alert_status
+
+	column facts_json
+		dataType: string
+		lineageTag: 848f1507-3234-4184-a420-654ea63eb4a3
+		summarizeBy: none
+		sourceColumn: facts_json
+
+		annotation SummarizationSetBy = Automatic
 
 	partition ai_insights_weekly = m
 		mode: import

@@ -6,7 +6,7 @@ model Model
 		legacyRedirects
 		returnErrorValuesAsNull
 
-annotation PBI_QueryOrder = ["session_summary","feature_adoption_daily","error_summary_daily","events_enriched"]
+annotation PBI_QueryOrder = ["session_summary","feature_adoption_daily","error_summary_daily","events_enriched","DimDate","ai_insights_weekly"]
 
 annotation __PBI_TimeIntelligenceEnabled = 1
 

@@ -83,6 +83,14 @@ table session_summary
 		formatString: Long Date
 		lineageTag: a0793332-0781-414d-9308-0724e5baaa0f
 
+	column appVersion
+		dataType: string
+		lineageTag: 82b26516-1ee6-420a-877b-6cabf54c3dce
+		summarizeBy: none
+		sourceColumn: appVersion
+
+		annotation SummarizationSetBy = Automatic
+
 	partition session_summary = m
 		mode: import
 		source =

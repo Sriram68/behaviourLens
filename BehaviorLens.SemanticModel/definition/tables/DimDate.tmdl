@@ -7,7 +7,12 @@ table DimDate
 		isUnique
 		formatString: Long Date
 		lineageTag: ef62a53b-0985-4027-be44-8ad6ab15c35e
+		summarizeBy: none
 		sourceColumn: Date
+
+		annotation UnderlyingDateTimeDataType = Date
+
+		annotation SummarizationSetBy = Automatic
 
 	column Year
 		dataType: int64

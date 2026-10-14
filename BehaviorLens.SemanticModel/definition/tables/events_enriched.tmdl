@@ -13,6 +13,39 @@ table events_enriched
 		formatString: #,##0
 		lineageTag: bf44dc15-325c-498e-9a66-76c6ec4808f0
 
+	/// Export calls that failed: api_error events on the /api/export endpoint.
+	measure 'Failed Exports' =
+			CALCULATE(
+			    COUNTROWS(events_enriched),
+			    KEEPFILTERS(events_enriched[eventName] = "api_error"),
+			    KEEPFILTERS(events_enriched[endpoint] = "/api/export")
+			)
+		formatString: #,##0
+		displayFolder: Exports
+		lineageTag: cfea6c4f-8308-4f55-9640-7683c7ee9cca
+
+	/// Calls to /api/export: every export_triggered event plus every retry of a failed export.
+	measure 'Export Calls' =
+			VAR _attempts =
+			    CALCULATE(COUNTROWS(events_enriched), KEEPFILTERS(events_enriched[eventName] = "export_triggered"))
+			VAR _retries =
+			    CALCULATE(
+			        COUNTROWS(events_enriched),
+			        KEEPFILTERS(events_enriched[eventName] = "retry_attempt"),
+			        KEEPFILTERS(events_enriched[endpoint] = "/api/export")
+			    )
+			RETURN
+			    _attempts + _retries
+		formatString: #,##0
+		displayFolder: Exports
+		lineageTag: 223b4225-faae-4013-8169-3df364110965
+
+	/// Share of /api/export calls that failed. Normalises for how long each app version has been live, unlike raw error counts.
+	measure 'Export Failure Rate' = DIVIDE([Failed Exports], [Export Calls])
+		formatString: 0.0%
+		displayFolder: Exports
+		lineageTag: 188c342b-e7d1-4975-aaf9-fa223c887ec4
+
 	column eventName
 		dataType: string
 		lineageTag: 7fbe1efe-c414-4ca3-8796-1cd4124ade23
@@ -115,48 +148,6 @@ table events_enriched
 
 		annotation SummarizationSetBy = Automatic
 
-	column appVersion
-		dataType: string
-		summarizeBy: none
-		lineageTag: 732fc6e9-3279-41b4-b9fc-6fecc894cc2e
-		sourceColumn: appVersion
-
-		annotation SummarizationSetBy = Automatic
-
-	column feature
-		dataType: string
-		summarizeBy: none
-		lineageTag: 4b193265-1cd2-41fb-993f-f3259e72c066
-		sourceColumn: feature
-
-		annotation SummarizationSetBy = Automatic
-
-	column onboarding_step
-		dataType: int64
-		formatString: 0
-		summarizeBy: none
-		lineageTag: 2d9f0822-0a91-4f82-b212-43942e281d3a
-		sourceColumn: onboarding_step
-
-		annotation SummarizationSetBy = Automatic
-
-	column error_code
-		dataType: int64
-		formatString: 0
-		summarizeBy: none
-		lineageTag: 417d71f7-1fa8-44a7-a345-04734f725d65
-		sourceColumn: error_code
-
-		annotation SummarizationSetBy = Automatic
-
-	column endpoint
-		dataType: string
-		summarizeBy: none
-		lineageTag: 79ea71ec-4fbe-47ba-b18f-2473ba31c098
-		sourceColumn: endpoint
-
-		annotation SummarizationSetBy = Automatic
-
 	column event_date = DATE(YEAR(events_enriched[event_timestamp]), MONTH(events_enriched[event_timestamp]), DAY(events_enriched[event_timestamp]))
 		dataType: dateTime
 		formatString: Long Date
@@ -184,6 +175,48 @@ table events_enriched
 		formatString: 0
 		displayFolder: Journey
 		lineageTag: 20df3166-3d1a-4a61-a0d9-b07d83a82e35
+
+	column appVersion
+		dataType: string
+		lineageTag: 732fc6e9-3279-41b4-b9fc-6fecc894cc2e
+		summarizeBy: none
+		sourceColumn: appVersion
+
+		annotation SummarizationSetBy = Automatic
+
+	column feature
+		dataType: string
+		lineageTag: 4b193265-1cd2-41fb-993f-f3259e72c066
+		summarizeBy: none
+		sourceColumn: feature
+
+		annotation SummarizationSetBy = Automatic
+
+	column onboarding_step
+		dataType: int64
+		formatString: 0
+		lineageTag: 2d9f0822-0a91-4f82-b212-43942e281d3a
+		summarizeBy: none
+		sourceColumn: onboarding_step
+
+		annotation SummarizationSetBy = Automatic
+
+	column error_code
+		dataType: int64
+		formatString: 0
+		lineageTag: 417d71f7-1fa8-44a7-a345-04734f725d65
+		summarizeBy: none
+		sourceColumn: error_code
+
+		annotation SummarizationSetBy = Automatic
+
+	column endpoint
+		dataType: string
+		lineageTag: 79ea71ec-4fbe-47ba-b18f-2473ba31c098
+		summarizeBy: none
+		sourceColumn: endpoint
+
+		annotation SummarizationSetBy = Automatic
 
 	partition events_enriched = m
 		mode: import

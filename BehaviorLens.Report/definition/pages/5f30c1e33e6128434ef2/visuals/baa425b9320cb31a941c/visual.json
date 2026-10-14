@@ -41,11 +41,11 @@
                       "Entity": "events_enriched"
                     }
                   },
-                  "Property": "Total Events"
+                  "Property": "Export Failure Rate"
                 }
               },
-              "queryRef": "events_enriched.Total Events",
-              "nativeQueryRef": "Total Events"
+              "queryRef": "events_enriched.Export Failure Rate",
+              "nativeQueryRef": "Export Failure Rate"
             }
           ]
         }
@@ -65,7 +65,22 @@
             "text": {
               "expr": {
                 "Literal": {
-                  "Value": "'Errors by app version'"
+                  "Value": "'Export failure rate by app version'"
+                }
+              }
+            }
+          }
+        }
+      ]
+    },
+    "objects": {
+      "labels": [
+        {
+          "properties": {
+            "show": {
+              "expr": {
+                "Literal": {
+                  "Value": "true"
                 }
               }
             }
@@ -73,63 +88,5 @@
         }
       ]
     }
-  },
-  "filterConfig": {
-    "filters": [
-      {
-        "name": "Filter6a1e0c2f9b7d4e3a8c51",
-        "field": {
-          "Column": {
-            "Expression": {
-              "SourceRef": {
-                "Entity": "events_enriched"
-              }
-            },
-            "Property": "flow"
-          }
-        },
-        "type": "Categorical",
-        "filter": {
-          "Version": 2,
-          "From": [
-            {
-              "Name": "e",
-              "Entity": "events_enriched",
-              "Type": 0
-            }
-          ],
-          "Where": [
-            {
-              "Condition": {
-                "In": {
-                  "Expressions": [
-                    {
-                      "Column": {
-                        "Expression": {
-                          "SourceRef": {
-                            "Source": "e"
-                          }
-                        },
-                        "Property": "flow"
-                      }
-                    }
-                  ],
-                  "Values": [
-                    [
-                      {
-                        "Literal": {
-                          "Value": "'Error & Recovery'"
-                        }
-                      }
-                    ]
-                  ]
-                }
-              }
-            }
-          ]
-        },
-        "howCreated": "User"
-      }
-    ]
   }
 }

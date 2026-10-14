@@ -6,7 +6,7 @@
     "y": 24,
     "z": 1000,
     "height": 130,
-    "width": 980
+    "width": 1232
   },
   "visual": {
     "visualType": "cardVisual",
@@ -16,21 +16,16 @@
           "projections": [
             {
               "field": {
-                "Aggregation": {
+                "Measure": {
                   "Expression": {
-                    "Column": {
-                      "Expression": {
-                        "SourceRef": {
-                          "Entity": "ai_insights_weekly"
-                        }
-                      },
-                      "Property": "scenario"
+                    "SourceRef": {
+                      "Entity": "ai_insights_weekly"
                     }
                   },
-                  "Function": 2
+                  "Property": "Scenarios Generated"
                 }
               },
-              "queryRef": "Scenarios Generated",
+              "queryRef": "ai_insights_weekly.Scenarios Generated",
               "nativeQueryRef": "Scenarios Generated"
             },
             {
@@ -60,44 +55,6 @@
               },
               "queryRef": "ai_insights_weekly.Facts Verified %",
               "nativeQueryRef": "Facts Verified %"
-            },
-            {
-              "field": {
-                "Aggregation": {
-                  "Expression": {
-                    "Column": {
-                      "Expression": {
-                        "SourceRef": {
-                          "Entity": "ai_insights_weekly"
-                        }
-                      },
-                      "Property": "relevance_score"
-                    }
-                  },
-                  "Function": 1
-                }
-              },
-              "queryRef": "Avg Relevance Score",
-              "nativeQueryRef": "Avg Relevance Score"
-            },
-            {
-              "field": {
-                "Aggregation": {
-                  "Expression": {
-                    "Column": {
-                      "Expression": {
-                        "SourceRef": {
-                          "Entity": "ai_insights_weekly"
-                        }
-                      },
-                      "Property": "generated_at"
-                    }
-                  },
-                  "Function": 4
-                }
-              },
-              "queryRef": "Last Generated",
-              "nativeQueryRef": "Last Generated"
             }
           ]
         }
