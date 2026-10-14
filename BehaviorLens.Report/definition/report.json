@@ -60,6 +60,11 @@
           "name": "BehaviorLensExecutive-4f2e91cd.json",
           "path": "BehaviorLensExecutive-4f2e91cd.json",
           "type": "CustomTheme"
+        },
+        {
+          "name": "psiog-logo17604331000000.png",
+          "path": "psiog-logo17604331000000.png",
+          "type": "Image"
         }
       ]
     }
