@@ -49,7 +49,8 @@ def function_health():
     data = json.loads(body)
     if not data["checks"]["storage"]:
         raise RuntimeError("storage unreachable")
-    return f"storage ok, ask configured: {data['checks']['askConfigured']}"
+    checks = data["checks"]
+    return f"storage ok, ask configured: {checks['askConfigured']}, teams configured: {checks.get('teamsConfigured')}"
 
 
 def cors(origin):
