@@ -67,3 +67,5 @@ python databricks/run_pipeline.py --reset --since 2026/10/12  # sync + run the j
 python databricks/setup_ask_access.py                         # once: read-only identity + Function settings for Ask
 python scripts/preflight.py                                   # before every demo
 ```
+
+On Windows, `demo.cmd prep | check | preflight | pipeline | realert` runs the demo-day versions of these (see [docs/demo-script.md](docs/demo-script.md)).

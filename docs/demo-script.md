@@ -27,6 +27,10 @@ python qa/synthetic_event_generator.py               # ~33k events through the l
 python databricks/run_pipeline.py --reset --since <today as YYYY/MM/DD> --alert never
 ```
 
+On Windows, `demo.cmd` in the repo root wraps every command in this script and fills in
+today's UTC date: `.\demo.cmd prep` runs the generator, the pipeline above and step 1 below
+in one go (~15 min). The other subcommands are `check`, `preflight`, `pipeline` and `realert`.
+
 Then, **in this order**:
 
 1. `python scripts/preflight.py --no-ask` — among other checks it starts the Databricks SQL
@@ -40,7 +44,7 @@ Then, **in this order**:
 ## T-minus 10 minutes: preflight
 
 ```bash
-python scripts/preflight.py
+python scripts/preflight.py          # or: .\demo.cmd preflight
 ```
 
 Every line must say PASS. It also starts the SQL warehouse (it auto-stops when idle)
@@ -80,7 +84,7 @@ Then open:
 In the terminal:
 
 ```bash
-python databricks/run_pipeline.py --since <today as YYYY/MM/DD>
+python databricks/run_pipeline.py --since <today as YYYY/MM/DD>   # or: .\demo.cmd pipeline
 ```
 
 *"This syncs the new events into Databricks and runs ingestion, aggregation, 22 data
@@ -120,7 +124,7 @@ directly for the real-time view.
    vs since, sessions abandoned, the fact-check line, and a button to the live screen.
    *"The team hears about it in their channel, with numbers that have been checked, and
    only once per incident: a re-run doesn't spam them."*
-   (To show it again: `python databricks/run_pipeline.py --skip-sync --alert always`.)
+   (To show it again: `python databricks/run_pipeline.py --skip-sync --alert always`, or `.\demo.cmd realert`.)
 
 ## 7. Ask BehaviorLens (1.5 min)
 
