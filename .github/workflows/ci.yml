@@ -36,7 +36,7 @@ jobs:
         with:
           python-version: "3.11"
       - run: pip install -r requirements-dev.txt
-      - run: pytest tests/ --cov=function_app --cov=ask --cov=factcheck --cov-report=term-missing
+      - run: pytest tests/ --cov=function_app --cov=ask --cov=factcheck --cov=gemini --cov=teams_report --cov-report=term-missing
 
   pipeline-tests:
     # The insight layer must find the planted incident, drop-off and dead

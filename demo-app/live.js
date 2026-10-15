@@ -314,6 +314,31 @@ async function poll() {
 window.addEventListener("resize", () => lastStats && renderColumns($("per-minute"), lastStats.perMinute));
 poll();
 
+// --- Send report to Teams -------------------------------------------------------
+// The Function builds and posts the card; the webhook never reaches this page.
+
+$("teams-btn").addEventListener("click", async () => {
+  const button = $("teams-btn");
+  const status = $("teams-status");
+  button.disabled = true;
+  button.textContent = "Sending…";
+  status.className = "teams-status";
+  status.textContent = "";
+  try {
+    const resp = await fetch(`${API}/teams/report`, { method: "POST" });
+    const data = await resp.json().catch(() => ({}));
+    if (!resp.ok) throw new Error(data.error || `HTTP ${resp.status}`);
+    status.className = "teams-status ok";
+    status.textContent = data.includedInsight ? "✓ Sent to Teams (with AI insight)" : "✓ Sent to Teams (live snapshot)";
+  } catch (err) {
+    status.className = "teams-status bad";
+    status.textContent = `⚠ ${err.message}`;
+  } finally {
+    button.disabled = false;
+    button.textContent = "Send report to Teams";
+  }
+});
+
 // --- Ask BehaviorLens ------------------------------------------------------------------
 
 const answerEl = $("answer");

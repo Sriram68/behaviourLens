@@ -49,6 +49,11 @@
   .live-chip.stale .dot { background: var(--status-critical); }
   header .spacer { flex: 1; }
   button.theme { background: none; border: 1px solid var(--border); color: var(--text-secondary); border-radius: 8px; padding: 0.35rem 0.7rem; cursor: pointer; font: inherit; }
+  button.teams { background: var(--series-1); border: 1px solid var(--series-1); color: #fff; border-radius: 8px; padding: 0.35rem 0.8rem; cursor: pointer; font: inherit; font-weight: 600; }
+  button.teams:disabled { opacity: 0.7; cursor: progress; }
+  .teams-status { font-size: 0.85rem; color: var(--text-secondary); }
+  .teams-status.ok { color: var(--status-good-text); font-weight: 600; }
+  .teams-status.bad { color: var(--status-critical); font-weight: 600; }
 
   .wrap { padding: 1.25rem 1.5rem 2rem; display: grid; gap: 1rem; grid-template-columns: minmax(0, 1fr) 320px; max-width: 1500px; margin: 0 auto; align-items: start; }
   .card { background: var(--surface-1); border: 1px solid var(--border); border-radius: 12px; padding: 1rem 1.15rem; }
@@ -135,6 +140,8 @@
     <span id="live-chip" class="live-chip"><span class="dot"></span><span id="live-text">Connecting…</span></span>
     <span class="spacer"></span>
     <span class="muted" id="window-label">Last 30 minutes</span>
+    <span class="teams-status" id="teams-status" role="status" aria-live="polite"></span>
+    <button class="teams" id="teams-btn" type="button" title="Post the live snapshot and the latest verified AI insight to the team's Teams channel">Send report to Teams</button>
     <button class="theme" id="theme-toggle" type="button">Theme</button>
   </header>
 

@@ -130,3 +130,25 @@ test("Ask surfaces the SQL guardrail when a question asks for something unsafe",
   await expect(page.locator("#answer .verdict")).toContainText("Blocked by SQL guardrail");
   await expect(page.locator("#answer pre")).toHaveText("DELETE FROM session_summary");
 });
+
+test("Send report to Teams posts through the Function and confirms", async ({ page }) => {
+  let posted = 0;
+  await page.route("**/api/teams/report", (route) => {
+    posted += 1;
+    return route.fulfill({ json: { status: "sent", includedInsight: true, totals: { events: 42 } } });
+  });
+  await page.goto("/demo-app/live.html?api=http://mock.local/api");
+  await page.click("#teams-btn");
+  await expect(page.locator("#teams-status")).toHaveText("✓ Sent to Teams (with AI insight)");
+  await expect(page.locator("#teams-btn")).toBeEnabled();
+  expect(posted).toBe(1);
+});
+
+test("Send report to Teams shows the cooldown message instead of failing silently", async ({ page }) => {
+  await page.route("**/api/teams/report", (route) =>
+    route.fulfill({ status: 429, json: { error: "A report was just sent. Try again in 12 s." } })
+  );
+  await page.goto("/demo-app/live.html?api=http://mock.local/api");
+  await page.click("#teams-btn");
+  await expect(page.locator("#teams-status")).toHaveText("⚠ A report was just sent. Try again in 12 s.");
+});

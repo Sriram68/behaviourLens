@@ -16,6 +16,7 @@ from azure.storage.blob import BlobServiceClient
 
 import ask
 import gemini
+import teams_report
 
 app = func.FunctionApp(http_auth_level=func.AuthLevel.ANONYMOUS)
 # The storage SDK logs every HTTP request at INFO; keep the Function logs readable.
@@ -86,6 +87,7 @@ class RateLimiter:
 
 ingest_limiter = RateLimiter(int(os.environ.get("INGEST_RATE_LIMIT_PER_MIN", "300")))
 ask_limiter = RateLimiter(int(os.environ.get("ASK_RATE_LIMIT_PER_MIN", "10")))
+report_limiter = RateLimiter(int(os.environ.get("REPORT_RATE_LIMIT_PER_MIN", "3")))
 
 
 def _client_ip(req):
@@ -314,7 +316,7 @@ def live_stats(req: func.HttpRequest) -> func.HttpResponse:
 
 
 def health(req: func.HttpRequest) -> func.HttpResponse:
-    checks = {"storage": False, "askConfigured": ask.is_configured()}
+    checks = {"storage": False, "askConfigured": ask.is_configured(), "teamsConfigured": bool(teams_report.webhook_url())}
     try:
         checks["storage"] = bool(_get_container_client().exists())
     except Exception:  # noqa: BLE001 - any storage failure means unhealthy
@@ -350,7 +352,39 @@ def ask_question(req: func.HttpRequest) -> func.HttpResponse:
         return _json_response({"error": f"Upstream error: {type(err).__name__}"}, 502)
 
 
+# --- Send report to Teams -------------------------------------------------------------
+
+# The live page is public, so besides the per-IP limit there is a short global
+# cooldown: one click is one card, never a burst in the channel.
+REPORT_COOLDOWN_SECONDS = 20
+_last_report_at = [0.0]
+
+
+def send_report(req: func.HttpRequest) -> func.HttpResponse:
+    if not report_limiter.allow(_client_ip(req)):
+        return _too_many_requests()
+    webhook = teams_report.webhook_url()
+    if not webhook:
+        return _json_response({"error": "Teams is not configured on this deployment"}, 503)
+    wait = REPORT_COOLDOWN_SECONDS - (time.monotonic() - _last_report_at[0])
+    if wait > 0:
+        return _json_response({"error": f"A report was just sent. Try again in {int(wait) + 1} s."}, 429)
+
+    now = _utcnow()
+    stats = compute_stats(_recent_blob_events(_get_container_client(), now, 30), now, 30)
+    insight = teams_report.latest_insight()
+    try:
+        resp = requests.post(webhook, json=teams_report.build_card(stats, insight, now), timeout=20)
+    except requests.RequestException as err:
+        return _json_response({"error": f"Could not reach Teams ({type(err).__name__})"}, 502)
+    if resp.status_code >= 300:
+        return _json_response({"error": f"Teams rejected the report (HTTP {resp.status_code})"}, 502)
+    _last_report_at[0] = time.monotonic()
+    return _json_response({"status": "sent", "includedInsight": bool(insight), "totals": stats["totals"]})
+
+
 app.route(route="events", methods=["POST"])(ingest_events)
 app.route(route="stats", methods=["GET"])(live_stats)
 app.route(route="health", methods=["GET"])(health)
 app.route(route="ask", methods=["POST"])(ask_question)
+app.route(route="teams/report", methods=["POST"])(send_report)

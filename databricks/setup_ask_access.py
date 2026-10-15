@@ -5,9 +5,10 @@
    if a generated query slipped past the guardrail, this identity can't read
    anything else or write anything.
 2. A token for it (on-behalf-of, 60 days).
-3. The Function's app settings: that token, the warehouse, and the Gemini key
-   (read from the `behaviorlens` secret scope, never printed), written through a
-   temporary file so no secret appears in the command line or console.
+3. The Function's app settings: that token, the warehouse, the Gemini key and,
+   if present, the Teams webhook (read from the `behaviorlens` secret scope, never
+   printed), written through a temporary file so no secret appears in the command
+   line or console.
 
   python databricks/setup_ask_access.py
   python databricks/setup_ask_access.py --user-token   # fallback: your own PAT
@@ -31,6 +32,8 @@ TABLES = [
     "events_enriched", "session_summary", "feature_adoption_daily",
     "feature_usage_daily", "error_summary_daily", "error_detail_daily",
 ]
+# Read by the "Send report to Teams" endpoint, not reachable from Ask's SQL guardrail.
+EXTRA_READ_TABLES = ["ai_insights_weekly"]
 TOKEN_DAYS = 60
 FUNCTION_APP = os.environ.get("BEHAVIORLENS_FUNCTION_APP", "func-behaviorlens-psiddhi")
 RESOURCE_GROUP = os.environ.get("BEHAVIORLENS_RESOURCE_GROUP", "rg-pSiddhi3.0-2026-01-sem3-Sriram")
@@ -56,12 +59,12 @@ def grant_read_only(ws, app_id):
     principal = f"`{app_id}`"
     ws.sql(f"GRANT USE CATALOG ON CATALOG {bl_client.CATALOG} TO {principal}")
     ws.sql(f"GRANT USE SCHEMA ON SCHEMA {bl_client.CATALOG}.{bl_client.SCHEMA} TO {principal}")
-    for table in TABLES:
+    for table in TABLES + EXTRA_READ_TABLES:
         ws.sql(f"GRANT SELECT ON TABLE {bl_client.CATALOG}.{bl_client.SCHEMA}.{table} TO {principal}")
     acl = {"access_control_list": [{"service_principal_name": app_id, "permission_level": "CAN_USE"}]}
     ws.call("PATCH", f"/api/2.0/permissions/sql/warehouses/{bl_client.WAREHOUSE_ID}", json=acl)
     ws.call("PATCH", "/api/2.0/permissions/authorization/tokens", json=acl)
-    print(f"Granted {SP_NAME}: SELECT on {len(TABLES)} tables, CAN_USE on warehouse")
+    print(f"Granted {SP_NAME}: SELECT on {len(TABLES + EXTRA_READ_TABLES)} tables, CAN_USE on warehouse")
 
 
 def service_principal_token(ws, app_id):
@@ -81,9 +84,12 @@ def user_token(ws):
     return data["token_value"]
 
 
-def gemini_key(ws):
-    data = ws.call("GET", "/api/2.0/secrets/get", params={"scope": "behaviorlens", "key": "gemini_api_key"})
-    return base64.b64decode(data["value"]).decode("utf-8")
+def secret(ws, key):
+    resp = ws.request("GET", "/api/2.0/secrets/get", params={"scope": "behaviorlens", "key": key})
+    if resp.status_code == 404:
+        return None
+    resp.raise_for_status()
+    return base64.b64decode(resp.json()["value"]).decode("utf-8")
 
 
 def set_function_settings(settings):
@@ -119,14 +125,16 @@ def main():
         grant_read_only(ws, app_id)
         token = service_principal_token(ws, app_id)
 
-    set_function_settings(
-        {
-            "GEMINI_API_KEY": gemini_key(ws),
-            "DATABRICKS_HOST": bl_client.host(),
-            "DATABRICKS_TOKEN": token,
-            "DATABRICKS_WAREHOUSE_ID": bl_client.WAREHOUSE_ID,
-        }
-    )
+    settings = {
+        "GEMINI_API_KEY": secret(ws, "gemini_api_key"),
+        "DATABRICKS_HOST": bl_client.host(),
+        "DATABRICKS_TOKEN": token,
+        "DATABRICKS_WAREHOUSE_ID": bl_client.WAREHOUSE_ID,
+    }
+    teams = secret(ws, "teams_webhook_url")
+    if teams:  # powers the "Send report to Teams" button on BehaviorLens Live
+        settings["TEAMS_WEBHOOK_URL"] = teams
+    set_function_settings(settings)
 
 
 if __name__ == "__main__":

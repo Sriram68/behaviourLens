@@ -195,7 +195,7 @@ def call_gemini(prompt, json_mode=False, temperature=0.2, models=None):
     return text
 
 
-def run_sql(sql):
+def run_sql(sql, max_wait_seconds=90):
     host = os.environ["DATABRICKS_HOST"].rstrip("/")
     if not host.startswith("http"):
         host = "https://" + host
@@ -219,7 +219,7 @@ def run_sql(sql):
     resp.raise_for_status()
     data = resp.json()
     # A cold serverless warehouse can take a little while to start.
-    deadline = time.monotonic() + 90
+    deadline = time.monotonic() + max_wait_seconds
     while data["status"]["state"] in ("PENDING", "RUNNING") and time.monotonic() < deadline:
         time.sleep(2)
         poll = requests.get(f"{host}/api/2.0/sql/statements/{data['statement_id']}", headers=headers, timeout=30)
