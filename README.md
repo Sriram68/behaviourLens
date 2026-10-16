@@ -22,7 +22,7 @@ See [S3-C-01_BehaviorLens_Proposal.md](S3-C-01_BehaviorLens_Proposal.md) for the
 - `demo-app/` — **ReportHub** (`index.html`), a product-like app instrumented with the SDK, and **BehaviorLens Live** (`live.html`), the presenter screen
 - `azure-function/` — Python Function App: `POST /api/events` (validated, rate-limited, PII-scrubbed ingestion to Blob), `GET /api/stats` (live view), `GET /api/health`, `POST /api/ask` (guarded text-to-SQL with fact-checked answers)
 - `databricks/notebooks/` — ingestion, aggregations, data quality (22 checks), AI insights; `insights.py` (facts packs) and `factcheck.py` are imported by the AI notebook
-- `databricks/*.py` — `deploy.py`, `run_pipeline.py` (sync + run + wait), incremental `sync_raw_events.py`, `setup_ask_access.py` (read-only identity for Ask)
+- `databricks/*.py` — `deploy.py`, `run_pipeline.py` (sync + run + wait), incremental `sync_raw_events.py`, `setup_ask_access.py` (read-only identity for Ask), `setup_pipeline_runner.py` (run-only identity + presenter key for Live's Run pipeline button)
 - `qa/synthetic_event_generator.py` — 8 weeks of realistic ReportHub journeys with three planted problems
 - `e2e/` — Playwright: the three user flows against the live Function, plus the live view against a mocked API
 - `scripts/preflight.py` — demo-morning health check and warm-up
@@ -65,6 +65,7 @@ python databricks/deploy.py                                   # push notebooks/m
 python qa/synthetic_event_generator.py                        # simulated history (see --dry-run)
 python databricks/run_pipeline.py --reset --since 2026/10/12  # sync + run the job + wait
 python databricks/setup_ask_access.py                         # once: read-only identity + Function settings for Ask
+python databricks/setup_pipeline_runner.py                    # once: Live's Run pipeline button (prints the presenter key)
 python scripts/preflight.py                                   # before every demo
 ```
 

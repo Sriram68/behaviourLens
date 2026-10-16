@@ -339,6 +339,156 @@ $("teams-btn").addEventListener("click", async () => {
   }
 });
 
+// --- Run the pipeline (presenter only) ---------------------------------------------
+// The page is public, so the Function starts a run only with the presenter key.
+// The key lives in this tab's sessionStorage, never in the page or the URL.
+
+const KEY_STORE = "bl_presenter_key";
+const PIPELINE_POLL_MS = 5000;
+const TASKS = [
+  ["ingestion", "Ingestion"],
+  ["aggregations", "Aggregations"],
+  ["data_quality", "Data quality: 22 checks"],
+  ["ai_insights", "AI insights + Teams alert"],
+];
+const pipelineBtn = $("pipeline-btn");
+const keyInput = $("presenter-key");
+let pipelineTimer = null;
+
+function presenterKey() {
+  try { return sessionStorage.getItem(KEY_STORE) || ""; } catch (e) { return ""; }
+}
+function rememberKey(key) {
+  try { key ? sessionStorage.setItem(KEY_STORE, key) : sessionStorage.removeItem(KEY_STORE); } catch (e) { /* this click only */ }
+}
+function pipelineMsg(text, kind) {
+  $("pipeline-msg").className = `teams-status${kind ? ` ${kind}` : ""}`;
+  $("pipeline-msg").textContent = text;
+}
+function setPipelineButton(label, busy) {
+  pipelineBtn.textContent = label;
+  pipelineBtn.disabled = busy;
+}
+function askForKey(message, kind) {
+  rememberKey("");
+  keyInput.hidden = false;
+  keyInput.focus();
+  pipelineMsg(message, kind);
+  setPipelineButton("Run pipeline", false);
+}
+
+async function pipelineCall(path, init = {}) {
+  const resp = await fetch(`${API}/pipeline/${path}`, {
+    ...init,
+    headers: { "X-Presenter-Key": presenterKey(), ...(init.headers || {}) },
+  });
+  return { resp, data: await resp.json().catch(() => ({})) };
+}
+
+function stepClass(state) {
+  if (state === "SUCCESS") return "done";
+  if (["RUNNING", "QUEUED", "TERMINATING"].includes(state)) return "running";
+  if (["PENDING", "BLOCKED", "WAITING_FOR_RETRY"].includes(state)) return "";
+  return "failed";
+}
+
+function renderSteps(tasks) {
+  const byKey = Object.fromEntries((tasks || []).map((t) => [t.key, t.state]));
+  const list = $("pipeline-steps");
+  list.replaceChildren(...TASKS.map(([key, label]) => {
+    const cls = stepClass(byKey[key] || "PENDING");
+    const item = el("li", undefined, `step ${cls}`);
+    item.dataset.task = key;
+    item.append(el("span", cls === "done" ? "✓" : cls === "failed" ? "✗" : "", "mark"), el("span", label));
+    return item;
+  }));
+}
+
+function minutesSeconds(ms) {
+  const s = Math.max(0, Math.round(ms / 1000));
+  return `${Math.floor(s / 60)}m ${String(s % 60).padStart(2, "0")}s`;
+}
+
+function trackRun(runId, note) {
+  clearTimeout(pipelineTimer);
+  $("pipeline-wrap").hidden = false;
+  $("pipeline-title").textContent = `Pipeline run ${runId}`;
+  $("pipeline-note").textContent = note;
+  $("pipeline-elapsed").textContent = "";
+  renderSteps([]);
+  setPipelineButton("Pipeline running…", true);
+  pipelineMsg("", "");
+
+  const tick = async () => {
+    try {
+      const { resp, data } = await pipelineCall(`status?run_id=${encodeURIComponent(runId)}`);
+      if (resp.status === 401) return askForKey("⚠ Presenter key no longer valid", "bad");
+      if (resp.ok) {
+        renderSteps(data.tasks);
+        const end = data.endTime || Date.now();
+        if (data.startTime) $("pipeline-elapsed").textContent = minutesSeconds(end - data.startTime);
+        if (["TERMINATED", "SKIPPED", "INTERNAL_ERROR"].includes(data.state)) {
+          const ok = data.result === "SUCCESS";
+          $("pipeline-note").textContent = ok
+            ? "✓ Finished: tables, 22 checks and AI insights updated; Teams alerted if the incident is new"
+            : `⚠ Run ended: ${data.result || data.state}`;
+          $("pipeline-note").className = ok ? "teams-status ok" : "teams-status bad";
+          setPipelineButton("Run pipeline", false);
+          return;
+        }
+      }
+    } catch (err) {
+      // A network blip: keep polling.
+    }
+    pipelineTimer = setTimeout(tick, PIPELINE_POLL_MS);
+  };
+  $("pipeline-note").className = "muted";
+  tick();
+}
+
+// Saving the key checks it without starting anything: the status endpoint checks
+// the key before the run id, so a call without one answers 401 for a wrong key.
+async function saveKey() {
+  rememberKey(keyInput.value.trim());
+  keyInput.value = "";
+  try {
+    const { resp } = await pipelineCall("status");
+    if (resp.status === 401) return askForKey("⚠ Wrong presenter key", "bad");
+  } catch (err) {
+    // Offline: keep the key; starting a run will tell.
+  }
+  keyInput.hidden = true;
+  pipelineMsg("✓ Presenter key saved for this tab", "ok");
+}
+
+async function startPipeline() {
+  if (!keyInput.hidden && keyInput.value.trim()) return saveKey();
+  if (!presenterKey()) return askForKey("Enter the presenter key, then press Enter", "");
+
+  setPipelineButton("Syncing events…", true);
+  pipelineMsg("", "");
+  try {
+    const { resp, data } = await pipelineCall("run", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: "{}",
+    });
+    if (resp.status === 401) return askForKey("⚠ Wrong presenter key", "bad");
+    if (resp.status === 409 && data.runId) return trackRun(data.runId, "A run was already in progress");
+    if (!resp.ok) throw new Error(data.error || `HTTP ${resp.status}`);
+    const s = data.synced || {};
+    trackRun(data.runId, `${s.uploaded || 0} new event files synced to Databricks`);
+  } catch (err) {
+    pipelineMsg(`⚠ ${err.message}`, "bad");
+    setPipelineButton("Run pipeline", false);
+  }
+}
+
+pipelineBtn.addEventListener("click", startPipeline);
+keyInput.addEventListener("keydown", (e) => {
+  if (e.key === "Enter" && keyInput.value.trim()) saveKey();
+});
+
 // --- Ask BehaviorLens ------------------------------------------------------------------
 
 const answerEl = $("answer");

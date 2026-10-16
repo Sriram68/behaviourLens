@@ -40,18 +40,18 @@ RESOURCE_GROUP = os.environ.get("BEHAVIORLENS_RESOURCE_GROUP", "rg-pSiddhi3.0-20
 SUBSCRIPTION = os.environ.get("BEHAVIORLENS_SUBSCRIPTION", "pSiddhi")
 
 
-def service_principal(ws):
+def service_principal(ws, name=SP_NAME):
     found = ws.call(
-        "GET", "/api/2.0/preview/scim/v2/ServicePrincipals", params={"filter": f'displayName eq "{SP_NAME}"'}
+        "GET", "/api/2.0/preview/scim/v2/ServicePrincipals", params={"filter": f'displayName eq "{name}"'}
     ).get("Resources", [])
     if found:
         return found[0]["applicationId"]
     created = ws.call(
         "POST",
         "/api/2.0/preview/scim/v2/ServicePrincipals",
-        json={"schemas": ["urn:ietf:params:scim:schemas:core:2.0:ServicePrincipal"], "displayName": SP_NAME, "active": True},
+        json={"schemas": ["urn:ietf:params:scim:schemas:core:2.0:ServicePrincipal"], "displayName": name, "active": True},
     )
-    print(f"Created service principal {SP_NAME}")
+    print(f"Created service principal {name}")
     return created["applicationId"]
 
 
@@ -67,11 +67,11 @@ def grant_read_only(ws, app_id):
     print(f"Granted {SP_NAME}: SELECT on {len(TABLES + EXTRA_READ_TABLES)} tables, CAN_USE on warehouse")
 
 
-def service_principal_token(ws, app_id):
+def service_principal_token(ws, app_id, comment="BehaviorLens Ask (read-only)"):
     data = ws.call(
         "POST",
         "/api/2.0/token-management/on-behalf-of/tokens",
-        json={"application_id": app_id, "lifetime_seconds": TOKEN_DAYS * 86400, "comment": "BehaviorLens Ask (read-only)"},
+        json={"application_id": app_id, "lifetime_seconds": TOKEN_DAYS * 86400, "comment": comment},
     )
     return data["token_value"]
 

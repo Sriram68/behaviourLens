@@ -152,3 +152,74 @@ test("Send report to Teams shows the cooldown message instead of failing silentl
   await page.click("#teams-btn");
   await expect(page.locator("#teams-status")).toHaveText("⚠ A report was just sent. Try again in 12 s.");
 });
+
+test("Run pipeline asks for the presenter key, then shows each task's progress", async ({ page }) => {
+  const keys = [];
+  await page.route("**/api/pipeline/run", (route) => {
+    keys.push(route.request().headers()["x-presenter-key"]);
+    return route.fulfill({ json: { status: "started", runId: 7, synced: { uploaded: 3, failed: 0, alreadySynced: 9 } } });
+  });
+  let polls = 0;
+  await page.route("**/api/pipeline/status**", (route) => {
+    if (!route.request().url().includes("run_id=")) {
+      return route.fulfill({ status: 400, json: { error: "run_id required" } }); // the key check
+    }
+    polls += 1;
+    const running = polls === 1;
+    return route.fulfill({
+      json: {
+        runId: 7,
+        state: running ? "RUNNING" : "TERMINATED",
+        result: running ? null : "SUCCESS",
+        startTime: Date.now() - 65000,
+        endTime: running ? null : Date.now(),
+        tasks: [
+          { key: "ingestion", state: "SUCCESS" },
+          { key: "aggregations", state: running ? "RUNNING" : "SUCCESS" },
+          { key: "data_quality", state: running ? "PENDING" : "SUCCESS" },
+          { key: "ai_insights", state: running ? "PENDING" : "SUCCESS" },
+        ],
+      },
+    });
+  });
+  await page.goto("/demo-app/live.html?api=http://mock.local/api");
+
+  await expect(page.locator("#presenter-key")).toBeHidden();
+  await page.click("#pipeline-btn");
+  await expect(page.locator("#presenter-key")).toBeVisible();
+  await page.fill("#presenter-key", "lens-test");
+  await page.press("#presenter-key", "Enter");
+  await expect(page.locator("#pipeline-msg")).toHaveText("✓ Presenter key saved for this tab");
+  await expect(page.locator("#presenter-key")).toBeHidden();
+  expect(keys).toEqual([]); // saving the key starts nothing
+
+  await page.click("#pipeline-btn");
+  await expect(page.locator("#pipeline-title")).toHaveText("Pipeline run 7");
+  await expect(page.locator("#pipeline-note")).toHaveText("3 new event files synced to Databricks");
+  await expect(page.locator('.step[data-task="ingestion"]')).toHaveClass(/done/);
+  await expect(page.locator('.step[data-task="aggregations"]')).toHaveClass(/running/);
+  await expect(page.locator("#pipeline-btn")).toBeDisabled();
+  await expect(page.locator("#presenter-key")).toBeHidden();
+  expect(keys).toEqual(["lens-test"]);
+
+  await expect(page.locator('.step[data-task="ai_insights"]')).toHaveClass(/done/, { timeout: 12000 });
+  await expect(page.locator("#pipeline-note")).toContainText("✓ Finished");
+  await expect(page.locator("#pipeline-btn")).toBeEnabled();
+});
+
+test("Run pipeline rejects a wrong presenter key and asks again", async ({ page }) => {
+  let runs = 0;
+  await page.route("**/api/pipeline/status**", (route) => route.fulfill({ status: 401, json: { error: "Presenter key required" } }));
+  await page.route("**/api/pipeline/run", (route) => {
+    runs += 1;
+    return route.fulfill({ status: 401, json: { error: "Presenter key required" } });
+  });
+  await page.goto("/demo-app/live.html?api=http://mock.local/api");
+  await page.click("#pipeline-btn");
+  await page.fill("#presenter-key", "guess");
+  await page.press("#presenter-key", "Enter");
+  await expect(page.locator("#pipeline-msg")).toHaveText("⚠ Wrong presenter key");
+  await expect(page.locator("#presenter-key")).toBeVisible();
+  await expect(page.locator("#pipeline-wrap")).toBeHidden();
+  expect(runs).toBe(0);
+});

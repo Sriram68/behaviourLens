@@ -16,6 +16,7 @@ from azure.storage.blob import BlobServiceClient
 
 import ask
 import gemini
+import pipeline
 import teams_report
 
 app = func.FunctionApp(http_auth_level=func.AuthLevel.ANONYMOUS)
@@ -88,6 +89,9 @@ class RateLimiter:
 ingest_limiter = RateLimiter(int(os.environ.get("INGEST_RATE_LIMIT_PER_MIN", "300")))
 ask_limiter = RateLimiter(int(os.environ.get("ASK_RATE_LIMIT_PER_MIN", "10")))
 report_limiter = RateLimiter(int(os.environ.get("REPORT_RATE_LIMIT_PER_MIN", "3")))
+# Starting a run is rare; a low limit also caps presenter-key guesses per IP.
+pipeline_run_limiter = RateLimiter(int(os.environ.get("PIPELINE_RUN_RATE_LIMIT_PER_MIN", "5")))
+pipeline_status_limiter = RateLimiter(int(os.environ.get("PIPELINE_STATUS_RATE_LIMIT_PER_MIN", "30")))
 
 
 def _client_ip(req):
@@ -316,7 +320,12 @@ def live_stats(req: func.HttpRequest) -> func.HttpResponse:
 
 
 def health(req: func.HttpRequest) -> func.HttpResponse:
-    checks = {"storage": False, "askConfigured": ask.is_configured(), "teamsConfigured": bool(teams_report.webhook_url())}
+    checks = {
+        "storage": False,
+        "askConfigured": ask.is_configured(),
+        "teamsConfigured": bool(teams_report.webhook_url()),
+        "pipelineConfigured": pipeline.is_configured(),
+    }
     try:
         checks["storage"] = bool(_get_container_client().exists())
     except Exception:  # noqa: BLE001 - any storage failure means unhealthy
@@ -383,8 +392,67 @@ def send_report(req: func.HttpRequest) -> func.HttpResponse:
     return _json_response({"status": "sent", "includedInsight": bool(insight), "totals": stats["totals"]})
 
 
+# --- Run the pipeline (presenter only) -----------------------------------------------
+
+
+def _pipeline_guard(req, limiter):
+    """None if the request may go on, else the response to return."""
+    if not limiter.allow(_client_ip(req)):
+        return _too_many_requests()
+    if not pipeline.is_configured():
+        return _json_response({"error": "Running the pipeline is not configured on this deployment"}, 503)
+    if not pipeline.key_matches(req.headers.get("x-presenter-key", "")):
+        return _json_response({"error": "Presenter key required"}, 401)
+    return None
+
+
+def run_pipeline(req: func.HttpRequest) -> func.HttpResponse:
+    denied = _pipeline_guard(req, pipeline_run_limiter)
+    if denied:
+        return denied
+    try:
+        body = req.get_json()
+    except ValueError:
+        body = {}
+    alert = body.get("alert") if isinstance(body, dict) else None
+    if alert is not None and alert not in pipeline.ALERT_MODES:
+        return _json_response({"error": f"alert must be one of {', '.join(pipeline.ALERT_MODES)}"}, 400)
+
+    session = pipeline.session()
+    try:
+        running = pipeline.active_run(session)
+        if running:
+            return _json_response({"status": "running", "runId": running}, 409)
+        synced = pipeline.sync_today(session, _get_container_client(), _utcnow())
+        if synced["failed"]:
+            return _json_response({"error": f"{synced['failed']} files failed to sync; the run was not started"}, 502)
+        run_id = pipeline.start_run(session, alert)
+    except requests.RequestException as err:
+        logging.exception("Starting the pipeline failed")
+        return _json_response({"error": f"Databricks error ({type(err).__name__})"}, 502)
+    logging.info("Pipeline run %s started from Live (%s)", run_id, synced)
+    return _json_response({"status": "started", "runId": run_id, "synced": synced})
+
+
+def pipeline_status(req: func.HttpRequest) -> func.HttpResponse:
+    denied = _pipeline_guard(req, pipeline_status_limiter)
+    if denied:
+        return denied
+    run_id = req.params.get("run_id", "")
+    if not run_id.isdigit():
+        return _json_response({"error": "run_id required"}, 400)
+    try:
+        return _json_response(pipeline.run_status(pipeline.session(), int(run_id)))
+    except LookupError:
+        return _json_response({"error": "Not a BehaviorLens pipeline run"}, 404)
+    except requests.RequestException as err:
+        return _json_response({"error": f"Databricks error ({type(err).__name__})"}, 502)
+
+
 app.route(route="events", methods=["POST"])(ingest_events)
 app.route(route="stats", methods=["GET"])(live_stats)
 app.route(route="health", methods=["GET"])(health)
 app.route(route="ask", methods=["POST"])(ask_question)
 app.route(route="teams/report", methods=["POST"])(send_report)
+app.route(route="pipeline/run", methods=["POST"])(run_pipeline)
+app.route(route="pipeline/status", methods=["GET"])(pipeline_status)

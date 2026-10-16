@@ -50,7 +50,10 @@ def function_health():
     if not data["checks"]["storage"]:
         raise RuntimeError("storage unreachable")
     checks = data["checks"]
-    return f"storage ok, ask configured: {checks['askConfigured']}, teams configured: {checks.get('teamsConfigured')}"
+    return (
+        f"storage ok, ask configured: {checks['askConfigured']}, teams configured: {checks.get('teamsConfigured')}, "
+        f"run-pipeline button configured: {checks.get('pipelineConfigured')}"
+    )
 
 
 def cors(origin):

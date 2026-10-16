@@ -54,6 +54,23 @@
   .teams-status { font-size: 0.85rem; color: var(--text-secondary); }
   .teams-status.ok { color: var(--status-good-text); font-weight: 600; }
   .teams-status.bad { color: var(--status-critical); font-weight: 600; }
+  input.key { font: inherit; padding: 0.3rem 0.6rem; border-radius: 8px; border: 1px solid var(--axis); background: var(--surface-1); color: var(--text-primary); width: 10rem; }
+
+  .pipeline-wrap { padding: 1rem 1.5rem 0; max-width: 1500px; margin: 0 auto; }
+  .pipeline { background: var(--surface-1); border: 1px solid var(--border); border-radius: 12px; padding: 0.8rem 1.1rem; }
+  .pipeline-head { display: flex; gap: 0.75rem; align-items: baseline; flex-wrap: wrap; }
+  .pipeline-head .spacer { flex: 1; }
+  .steps { list-style: none; display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 0.6rem; margin: 0.65rem 0 0; padding: 0; }
+  .step { display: flex; gap: 0.5rem; align-items: center; border: 1px solid var(--border); border-radius: 10px; padding: 0.5rem 0.7rem; font-size: 0.92rem; color: var(--text-secondary); }
+  .step .mark { width: 1.3rem; height: 1.3rem; flex: none; border-radius: 50%; border: 2px solid var(--axis); display: grid; place-items: center; font-size: 0.75rem; font-weight: 700; color: #fff; }
+  .step.running { color: var(--text-primary); border-color: var(--series-1); }
+  .step.running .mark { border-color: var(--series-1); border-top-color: transparent; animation: spin 0.9s linear infinite; }
+  .step.done { color: var(--text-primary); }
+  .step.done .mark { background: var(--status-good); border-color: var(--status-good); }
+  .step.failed { color: var(--status-critical); }
+  .step.failed .mark { background: var(--status-critical); border-color: var(--status-critical); }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  @media (prefers-reduced-motion: reduce) { .step.running .mark { animation: none; border-top-color: var(--series-1); } }
 
   .wrap { padding: 1.25rem 1.5rem 2rem; display: grid; gap: 1rem; grid-template-columns: minmax(0, 1fr) 320px; max-width: 1500px; margin: 0 auto; align-items: start; }
   .card { background: var(--surface-1); border: 1px solid var(--border); border-radius: 12px; padding: 1rem 1.15rem; }
@@ -131,6 +148,8 @@
     header, .wrap { padding-left: 16px; padding-right: 16px; }
     .tiles { grid-template-columns: repeat(2, minmax(0, 1fr)); }
     .bar-row { grid-template-columns: 7.5rem 1fr; }
+    .pipeline-wrap { padding: 1rem 16px 0; }
+    .steps { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   }
 </style>
 </head>
@@ -142,8 +161,23 @@
     <span class="muted" id="window-label">Last 30 minutes</span>
     <span class="teams-status" id="teams-status" role="status" aria-live="polite"></span>
     <button class="teams" id="teams-btn" type="button" title="Post the live snapshot and the latest verified AI insight to the team's Teams channel">Send report to Teams</button>
+    <span class="teams-status" id="pipeline-msg" role="status" aria-live="polite"></span>
+    <input class="key" id="presenter-key" type="password" placeholder="Presenter key" aria-label="Presenter key" autocomplete="off" hidden />
+    <button class="teams" id="pipeline-btn" type="button" title="Presenter only: sync today's events into Databricks and run the pipeline">Run pipeline</button>
     <button class="theme" id="theme-toggle" type="button">Theme</button>
   </header>
+
+  <div class="pipeline-wrap" id="pipeline-wrap" hidden>
+    <section class="pipeline" aria-label="Pipeline run" aria-live="polite">
+      <div class="pipeline-head">
+        <strong id="pipeline-title">Pipeline run</strong>
+        <span class="muted" id="pipeline-note"></span>
+        <span class="spacer"></span>
+        <span class="muted" id="pipeline-elapsed"></span>
+      </div>
+      <ol class="steps" id="pipeline-steps"></ol>
+    </section>
+  </div>
 
   <div class="wrap">
     <div class="main">

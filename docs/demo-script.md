@@ -81,11 +81,20 @@ Then open:
 
 ## 3. Start the pipeline (15s)
 
-In the terminal:
+On Live, click **Run pipeline** (top right). The first click in a tab asks for the
+presenter key (masked; enter it before going on stage). The Function copies today's new
+event files into Databricks and starts the Job, and Live shows the four tasks completing.
+
+Fallback, in the terminal:
 
 ```bash
 python databricks/run_pipeline.py --since <today as YYYY/MM/DD>   # or: .\demo.cmd pipeline
 ```
+
+The button needs the presenter key because Live is public. The key is set by
+`databricks/setup_pipeline_runner.py` (secret `behaviorlens/pipeline_run_key`), and runs
+start under a separate Databricks identity that can only write the raw-events Volume and
+run this Job, so Ask's identity stays read-only.
 
 *"This syncs the new events into Databricks and runs ingestion, aggregation, 22 data
 quality checks and the AI layer. It takes about three minutes; let's look at what's
