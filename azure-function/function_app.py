@@ -17,6 +17,7 @@ from azure.storage.blob import BlobServiceClient
 import ask
 import gemini
 import pipeline
+import release_health
 import teams_report
 
 app = func.FunctionApp(http_auth_level=func.AuthLevel.ANONYMOUS)
@@ -92,6 +93,7 @@ report_limiter = RateLimiter(int(os.environ.get("REPORT_RATE_LIMIT_PER_MIN", "3"
 # Starting a run is rare; a low limit also caps presenter-key guesses per IP.
 pipeline_run_limiter = RateLimiter(int(os.environ.get("PIPELINE_RUN_RATE_LIMIT_PER_MIN", "5")))
 pipeline_status_limiter = RateLimiter(int(os.environ.get("PIPELINE_STATUS_RATE_LIMIT_PER_MIN", "30")))
+release_limiter = RateLimiter(int(os.environ.get("RELEASE_RATE_LIMIT_PER_MIN", "20")))
 
 
 def _client_ip(req):
@@ -392,6 +394,22 @@ def send_report(req: func.HttpRequest) -> func.HttpResponse:
     return _json_response({"status": "sent", "includedInsight": bool(insight), "totals": stats["totals"]})
 
 
+# --- Release health ------------------------------------------------------------------
+
+
+def release_health_view(req: func.HttpRequest) -> func.HttpResponse:
+    if not release_limiter.allow(_client_ip(req)):
+        return _too_many_requests()
+    try:
+        data = release_health.latest()
+    except (ask.QueryError, requests.RequestException, KeyError, ValueError) as err:
+        logging.exception("Release health failed")
+        return _json_response({"error": f"Pipeline data not reachable ({type(err).__name__})"}, 502)
+    if data is None:
+        return _json_response({"error": "Release health is not available yet"}, 503)
+    return _json_response(data)
+
+
 # --- Run the pipeline (presenter only) -----------------------------------------------
 
 
@@ -456,3 +474,4 @@ app.route(route="ask", methods=["POST"])(ask_question)
 app.route(route="teams/report", methods=["POST"])(send_report)
 app.route(route="pipeline/run", methods=["POST"])(run_pipeline)
 app.route(route="pipeline/status", methods=["GET"])(pipeline_status)
+app.route(route="release/health", methods=["GET"])(release_health_view)

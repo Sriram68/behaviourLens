@@ -351,6 +351,50 @@ $("teams-btn").addEventListener("click", async () => {
   }
 });
 
+// --- Release health ----------------------------------------------------------------
+// Which release hurt users, how many gave up, what to fix first. The numbers come
+// from the pipeline's facts pack and the verdict is a fixed rule in the Function.
+
+const RELEASE_POLL_MS = 60000;
+const BADGES = { rollback: "ROLL BACK", investigate: "INVESTIGATE", healthy: "HEALTHY" };
+
+function renderRelease(d) {
+  const card = $("release");
+  card.className = `card release ${d.level}`;
+  $("rel-badge").className = `badge ${d.level}`;
+  $("rel-badge").textContent = BADGES[d.level] || d.level;
+  const r = d.release || {};
+  $("rel-title").textContent = r.version ? `${d.headline} · release ${r.version}, shipped ${r.date}` : d.headline;
+  $("rel-verified").textContent = d.status === "verified"
+    ? `✓ ${d.factsVerified}/${d.factsTotal} numbers verified · pipeline run ${new Date(d.generatedAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}`
+    : `⚠ AI explanation not verified (${d.status})`;
+  const has = (v) => v !== null && v !== undefined;
+  $("rel-exports").textContent = has(d.exportFailureSincePct) ? `${d.exportFailureBeforePct}% → ${d.exportFailureSincePct}%` : "–";
+  $("rel-exports-note").textContent = has(d.exportFailureRatio) ? `${d.exportFailureRatio}× worse since the release` : "";
+  $("rel-abandoned").textContent = has(d.sessionsAbandoned) ? String(d.sessionsAbandoned) : "–";
+  $("rel-abandoned-note").textContent = has(d.sessionsHit) ? `${d.abandonedPct}% of ${d.sessionsHit} sessions hit by a failed export` : "";
+  $("rel-share-label").textContent = r.version ? `Spike errors in ${r.version}` : "Spike errors in this release";
+  $("rel-share").textContent = has(d.errorSharePct) ? `${d.errorSharePct}%` : "–";
+  $("rel-share-note").textContent = d.firstFlaggedDay ? `spike since ${d.firstFlaggedDay}` : "";
+  const c = d.topCause;
+  $("rel-cause").textContent = c ? `${c.code ? `${c.code} on ` : ""}${c.endpoint !== "n/a" ? c.endpoint : c.event}` : "–";
+  $("rel-cause-note").textContent = c ? `${c.share_pct}% of spike errors (${c.event})` : "";
+  const why = $("rel-narrative");
+  why.replaceChildren(el("span", "AI explanation: ", "why"), document.createTextNode(d.narrative || ""));
+  card.hidden = false;
+}
+
+async function refreshRelease() {
+  try {
+    const resp = await fetch(`${API}/release/health`, { cache: "no-store" });
+    if (resp.ok) renderRelease(await resp.json());
+  } catch (err) {
+    // Keep the last verdict on screen through a network blip.
+  }
+}
+refreshRelease();
+setInterval(refreshRelease, RELEASE_POLL_MS);
+
 // --- Run the pipeline (presenter only) ---------------------------------------------
 // The page is public, so the Function starts a run only with the presenter key.
 // The key lives in this tab's sessionStorage, never in the page or the URL.
@@ -447,6 +491,7 @@ function trackRun(runId, note) {
           $("pipeline-note").className = ok ? "teams-status ok" : "teams-status bad";
           pipelineMsg("", "");
           setPipelineButton("Run pipeline", false);
+          if (ok) setTimeout(refreshRelease, 130000); // after the Function's 2-minute cache
           return;
         }
       }

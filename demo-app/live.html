@@ -58,6 +58,25 @@
   .teams-status.bad { color: var(--status-critical); font-weight: 600; }
   input.key { font: inherit; padding: 0.3rem 0.6rem; border-radius: 8px; border: 1px solid var(--axis); background: var(--surface-1); color: var(--text-primary); width: 10rem; }
 
+  .release { border-left: 5px solid var(--axis); }
+  .release.rollback { border-left-color: var(--status-critical); }
+  .release.investigate { border-left-color: var(--status-warning); }
+  .release.healthy { border-left-color: var(--status-good); }
+  .release-head { display: flex; gap: 0.75rem; align-items: center; flex-wrap: wrap; }
+  .release-head h2 { font-size: 1.15rem; margin: 0; }
+  .release-head .spacer { flex: 1; }
+  .badge { font-size: 0.78rem; font-weight: 700; letter-spacing: 0.06em; padding: 0.25rem 0.6rem; border-radius: 999px; color: #fff; background: var(--axis); }
+  .badge.rollback { background: var(--status-critical); }
+  .badge.investigate { background: var(--status-warning); color: #0b0b0b; }
+  .badge.healthy { background: var(--status-good); }
+  .rel-stats { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 0.75rem; margin: 0.8rem 0 0.6rem; }
+  .rel-stats .label { color: var(--text-secondary); font-size: 0.82rem; }
+  .rel-stats .value { font-size: 1.55rem; font-weight: 600; line-height: 1.2; }
+  .rel-stats .value.small { font-size: 1.05rem; padding-top: 0.3rem; }
+  .rel-stats .note { font-size: 0.8rem; color: var(--text-muted); }
+  .rel-narrative { margin: 0; font-size: 0.95rem; color: var(--text-primary); }
+  .rel-narrative .why { font-weight: 600; color: var(--text-secondary); }
+
   .pipeline-wrap { padding: 1rem 1.5rem 0; max-width: 1500px; margin: 0 auto; }
   .pipeline { background: var(--surface-1); border: 1px solid var(--border); border-radius: 12px; padding: 0.8rem 1.1rem; }
   .pipeline-head { display: flex; gap: 0.75rem; align-items: baseline; flex-wrap: wrap; }
@@ -153,6 +172,7 @@
     .bar-row { grid-template-columns: 7.5rem 1fr; }
     .pipeline-wrap { padding: 1rem 16px 0; }
     .steps { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .rel-stats { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   }
 </style>
 </head>
@@ -184,6 +204,22 @@
 
   <div class="wrap">
     <div class="main">
+      <section class="card release" id="release" aria-label="Release health" hidden>
+        <div class="release-head">
+          <span class="badge" id="rel-badge"></span>
+          <h2 id="rel-title">Release health</h2>
+          <span class="spacer"></span>
+          <span class="muted" id="rel-verified"></span>
+        </div>
+        <div class="rel-stats">
+          <div><div class="label">Export failures</div><div class="value" id="rel-exports">–</div><div class="note" id="rel-exports-note"></div></div>
+          <div><div class="label">Sessions that gave up</div><div class="value" id="rel-abandoned">–</div><div class="note" id="rel-abandoned-note"></div></div>
+          <div><div class="label" id="rel-share-label">Spike errors in this release</div><div class="value" id="rel-share">–</div><div class="note" id="rel-share-note"></div></div>
+          <div><div class="label">Fix first</div><div class="value small" id="rel-cause">–</div><div class="note" id="rel-cause-note"></div></div>
+        </div>
+        <p class="rel-narrative" id="rel-narrative"></p>
+      </section>
+
       <section class="tiles" aria-label="Live totals">
         <div class="tile"><div class="label">Events</div><div class="value" id="t-events">–</div><div class="note">last 30 min</div></div>
         <div class="tile"><div class="label">Sessions</div><div class="value" id="t-sessions">–</div><div class="note">active people</div></div>
@@ -243,6 +279,6 @@
 
   <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
   <!-- Versioned so a new page never runs a cached older script (Pages caches for 10 min). -->
-  <script src="live.js?v=2026-10-16.2"></script>
+  <script src="live.js?v=2026-10-16.3"></script>
 </body>
 </html>

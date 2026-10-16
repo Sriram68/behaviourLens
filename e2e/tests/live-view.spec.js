@@ -243,6 +243,48 @@ test("The theme button switches between light and dark with a sun/moon icon", as
   await expect(html).toHaveAttribute("data-theme", "dark"); // remembered over the light system setting
 });
 
+test("Release health shows the verdict, the user cost and the verified explanation", async ({ page }) => {
+  await page.route("**/api/release/health", (route) =>
+    route.fulfill({
+      json: {
+        level: "rollback",
+        headline: "Roll back or hotfix 2.4.0",
+        release: { version: "2.4.0", date: "2026-10-11" },
+        firstFlaggedDay: "2026-10-12",
+        exportFailureBeforePct: 1.8,
+        exportFailureSincePct: 46.1,
+        exportFailureRatio: 25.6,
+        sessionsHit: 127,
+        sessionsAbandoned: 77,
+        abandonedPct: 60.6,
+        errorSharePct: 100.0,
+        topCause: { event: "api_error", code: 502, endpoint: "/api/export", share_pct: 58.3 },
+        narrative: "Release 2.4.0 broke exports.",
+        status: "verified",
+        factsVerified: 11,
+        factsTotal: 11,
+        generatedAt: "2026-10-16T06:37:44.359Z",
+      },
+    })
+  );
+  await page.goto("/demo-app/live.html?api=http://mock.local/api");
+  await expect(page.locator("#release")).toBeVisible();
+  await expect(page.locator("#rel-badge")).toHaveText("ROLL BACK");
+  await expect(page.locator("#rel-title")).toHaveText("Roll back or hotfix 2.4.0 · release 2.4.0, shipped 2026-10-11");
+  await expect(page.locator("#rel-exports")).toHaveText("1.8% → 46.1%");
+  await expect(page.locator("#rel-abandoned")).toHaveText("77");
+  await expect(page.locator("#rel-cause")).toHaveText("502 on /api/export");
+  await expect(page.locator("#rel-verified")).toContainText("✓ 11/11 numbers verified");
+  await expect(page.locator("#rel-narrative")).toContainText("Release 2.4.0 broke exports.");
+});
+
+test("Release health stays hidden until there is data", async ({ page }) => {
+  await page.route("**/api/release/health", (route) => route.fulfill({ status: 503, json: { error: "not yet" } }));
+  await page.goto("/demo-app/live.html?api=http://mock.local/api");
+  await page.waitForTimeout(500);
+  await expect(page.locator("#release")).toBeHidden();
+});
+
 test("The ReportHub link under the QR code is clickable", async ({ page }) => {
   await page.goto("/demo-app/live.html?api=http://mock.local/api");
   const link = page.locator("#app-url");
