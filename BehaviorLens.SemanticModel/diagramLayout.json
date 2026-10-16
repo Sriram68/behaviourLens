@@ -1,0 +1,100 @@
+{
+  "version": "1.1.0",
+  "diagrams": [
+    {
+      "ordinal": 0,
+      "scrollPosition": {
+        "x": 0,
+        "y": 0
+      },
+      "nodes": [
+        {
+          "location": {
+            "x": 937.52277025970875,
+            "y": 219.86403477689919
+          },
+          "nodeIndex": "ai_insights_weekly",
+          "nodeLineageTag": "43083430-6555-40ea-9933-a6cdd7574519",
+          "size": {
+            "height": 300,
+            "width": 234
+          },
+          "zIndex": 0
+        },
+        {
+          "location": {
+            "x": 334.17739341632387,
+            "y": 191.555594376729
+          },
+          "nodeIndex": "DimDate",
+          "nodeLineageTag": "7dfb0b42-12a9-4f34-bed4-e59256918654",
+          "size": {
+            "height": 224,
+            "width": 234
+          },
+          "zIndex": 0
+        },
+        {
+          "location": {
+            "x": 50,
+            "y": -50
+          },
+          "nodeIndex": "error_summary_daily",
+          "nodeLineageTag": "0b848ef8-9734-419b-b3b0-d99c2dcb2eaf",
+          "size": {
+            "height": 272,
+            "width": 234
+          },
+          "zIndex": 0
+        },
+        {
+          "location": {
+            "x": 703.52277025970875,
+            "y": 309.511237269254
+          },
+          "nodeIndex": "events_enriched",
+          "nodeLineageTag": "855420cb-93de-4ad2-823b-f75ef3b96468",
+          "size": {
+            "height": 300,
+            "width": 234
+          },
+          "zIndex": 0
+        },
+        {
+          "location": {
+            "x": 137.85383698957168,
+            "y": 465.72806955379838
+          },
+          "nodeIndex": "feature_adoption_daily",
+          "nodeLineageTag": "d3f77716-8e9e-4a24-88f6-5b0e48f7a864",
+          "size": {
+            "height": 224,
+            "width": 234
+          },
+          "zIndex": 0
+        },
+        {
+          "location": {
+            "x": 618.35350077100679,
+            "y": -40.653795613898751
+          },
+          "nodeIndex": "session_summary",
+          "nodeLineageTag": "575faf88-d208-4746-a8ee-b5f513640f46",
+          "size": {
+            "height": 300,
+            "width": 234
+          },
+          "zIndex": 0
+        }
+      ],
+      "name": "All tables",
+      "zoomValue": 100,
+      "pinKeyFieldsToTop": false,
+      "showExtraHeaderInfo": false,
+      "hideKeyFieldsWhenCollapsed": false,
+      "tablesLocked": false
+    }
+  ],
+  "selectedDiagram": "All tables",
+  "defaultDiagram": "All tables"
+}

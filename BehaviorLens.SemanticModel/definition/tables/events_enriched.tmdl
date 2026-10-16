@@ -218,6 +218,21 @@ table events_enriched
 
 		annotation SummarizationSetBy = Automatic
 
+	/// Plain-English label for flow_step (e.g. '1. Clicked a feature'). Sorted by flow_step so funnels keep their step order.
+	column flow_step_name =
+			SWITCH(events_enriched[eventName],
+			  "login_attempt", "1. Tried to log in", "login_success", "2. Logged in", "onboarding_step_complete", "3. Onboarding step done",
+			  "feature_click", "1. Clicked a feature", "search_query", "2. Searched", "filter_applied", "3. Applied a filter", "export_triggered", "4. Exported",
+			  "api_error", "1. Server (API) error", "page_not_found", "2. Page not found", "retry_attempt", "3. Retried an action", "js_error", "4. JavaScript error",
+			  "page_view", "Viewed a page",
+			  "Other"
+			)
+		dataType: string
+		displayFolder: Journey
+		lineageTag: c90eff32-ee8d-49a7-8ae7-39a0b73f078b
+		summarizeBy: none
+		sortByColumn: flow_step
+
 	partition events_enriched = m
 		mode: import
 		source =

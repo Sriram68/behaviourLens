@@ -22,12 +22,13 @@
                       "Entity": "events_enriched"
                     }
                   },
-                  "Property": "flow_step"
+                  "Property": "flow_step_name"
                 }
               },
-              "queryRef": "events_enriched.flow_step",
-              "nativeQueryRef": "flow_step",
-              "active": true
+              "queryRef": "events_enriched.flow_step_name",
+              "nativeQueryRef": "flow_step_name",
+              "active": true,
+              "displayName": "Step"
             }
           ]
         },
@@ -45,10 +46,28 @@
                 }
               },
               "queryRef": "events_enriched.Sessions per Step",
-              "nativeQueryRef": "Sessions per Step"
+              "nativeQueryRef": "Sessions per Step",
+              "displayName": "Sessions"
             }
           ]
         }
+      },
+      "sortDefinition": {
+        "sort": [
+          {
+            "field": {
+              "Column": {
+                "Expression": {
+                  "SourceRef": {
+                    "Entity": "events_enriched"
+                  }
+                },
+                "Property": "flow_step_name"
+              }
+            },
+            "direction": "Ascending"
+          }
+        ]
       }
     }
   },
