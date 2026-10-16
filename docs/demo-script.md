@@ -70,8 +70,13 @@ Then open:
 
 1. Point at the QR code on the live screen: *"Scan this, sign in with the defaults,
    and use the app: search, export a report, try sharing a link."*
-2. As events arrive, narrate the live screen: events per minute climbing, sessions
-   count, the flow breakdown, the feed.
+2. Start at the **Release health** card at the top: *"BehaviorLens already has a
+   verdict: roll back 2.4.0. This many sessions gave up after a failed export, and this
+   is what to fix first."* The numbers come from the pipeline's facts pack and the verdict
+   is a fixed rule in code (spike still happening, exports at least 3x worse, most spike
+   errors in that release); the AI explanation under it is fact-checked.
+   As events arrive, narrate the rest: events per minute climbing, sessions count, the
+   flow breakdown, the feed.
 3. The **Export failure rate** tile turns red with "Incident". Say: *"Some of you just
    hit a broken export. Remember that, we'll come back to it."*
 4. Someone taps **Copy share link**: a `js_error` appears in the feed. *"Nobody wrote
