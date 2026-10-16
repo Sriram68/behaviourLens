@@ -26,10 +26,18 @@ const seenFeedKeys = new Set();
 
 // --- Theme ---------------------------------------------------------------------
 
+// The button shows where a click takes you: a moon in light mode, a sun in dark.
+const ICON_ATTRS = 'viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"';
+const SUN_ICON = `<svg ${ICON_ATTRS}><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"/></svg>`;
+const MOON_ICON = `<svg ${ICON_ATTRS}><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>`;
+
 function applyTheme(theme) {
-  if (theme) document.documentElement.setAttribute("data-theme", theme);
-  else document.documentElement.removeAttribute("data-theme");
-  $("theme-toggle").textContent = `Theme: ${theme || "system"}`;
+  document.documentElement.setAttribute("data-theme", theme);
+  const next = theme === "dark" ? "light" : "dark";
+  const button = $("theme-toggle");
+  button.innerHTML = theme === "dark" ? SUN_ICON : MOON_ICON;
+  button.setAttribute("aria-label", `Switch to ${next} theme`);
+  button.title = `Switch to ${next} theme`;
 }
 let theme = null;
 try {
@@ -37,12 +45,15 @@ try {
 } catch (e) {
   theme = null;
 }
+if (theme !== "light" && theme !== "dark") {
+  theme = window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
+}
 applyTheme(theme);
 $("theme-toggle").addEventListener("click", () => {
-  theme = theme === null ? "light" : theme === "light" ? "dark" : null;
+  theme = theme === "dark" ? "light" : "dark";
   applyTheme(theme);
   try {
-    theme ? localStorage.setItem("bl_live_theme", theme) : localStorage.removeItem("bl_live_theme");
+    localStorage.setItem("bl_live_theme", theme);
   } catch (e) {
     // Theme choice just won't persist.
   }
@@ -52,6 +63,7 @@ $("theme-toggle").addEventListener("click", () => {
 // --- QR code ---------------------------------------------------------------------
 
 $("app-url").textContent = APP_URL;
+$("app-url").href = APP_URL;
 if (window.QRCode) {
   // eslint-disable-next-line no-new
   new QRCode($("qr"), {
@@ -433,6 +445,7 @@ function trackRun(runId, note) {
             ? "✓ Finished: tables, 22 checks and AI insights updated; Teams alerted if the incident is new"
             : `⚠ Run ended: ${data.result || data.state}`;
           $("pipeline-note").className = ok ? "teams-status ok" : "teams-status bad";
+          pipelineMsg("", "");
           setPipelineButton("Run pipeline", false);
           return;
         }
@@ -474,7 +487,10 @@ async function startPipeline() {
       body: "{}",
     });
     if (resp.status === 401) return askForKey("⚠ Wrong presenter key", "bad");
-    if (resp.status === 409 && data.runId) return trackRun(data.runId, "A run was already in progress");
+    if (resp.status === 409 && data.runId) {
+      trackRun(data.runId, "Already running: showing that run instead of starting another");
+      return pipelineMsg("⚠ The pipeline is already running", "bad");
+    }
     if (!resp.ok) throw new Error(data.error || `HTTP ${resp.status}`);
     const s = data.synced || {};
     trackRun(data.runId, `${s.uploaded || 0} new event files synced to Databricks`);

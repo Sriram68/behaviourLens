@@ -9,8 +9,9 @@ setlocal
 cd /d "%~dp0"
 set "PY=azure-function\.venv\Scripts\python.exe"
 set "PATH=%LOCALAPPDATA%\Microsoft\WinGet\Links;%PATH%"
-rem Blob folders are named by UTC date, so sync from today's UTC date.
-for /f %%d in ('powershell -NoProfile -Command "(Get-Date).ToUniversalTime().ToString('yyyy/MM/dd')"') do set "TODAY=%%d"
+rem Blob folders are named by UTC date, so sync from today's UTC date. Invariant
+rem culture: in a format string "/" is the culture's date separator, "-" on some PCs.
+for /f %%d in ('powershell -NoProfile -Command "(Get-Date).ToUniversalTime().ToString('yyyy/MM/dd', [Globalization.CultureInfo]::InvariantCulture)"') do set "TODAY=%%d"
 
 if /i "%~1"=="prep" goto prep
 if /i "%~1"=="check" goto check

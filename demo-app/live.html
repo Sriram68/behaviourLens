@@ -48,7 +48,9 @@
   .live-chip .dot { width: 9px; height: 9px; border-radius: 50%; background: var(--status-good); }
   .live-chip.stale .dot { background: var(--status-critical); }
   header .spacer { flex: 1; }
-  button.theme { background: none; border: 1px solid var(--border); color: var(--text-secondary); border-radius: 8px; padding: 0.35rem 0.7rem; cursor: pointer; font: inherit; }
+  button.theme { background: none; border: 1px solid var(--border); color: var(--text-secondary); border-radius: 50%; width: 2.1rem; height: 2.1rem; padding: 0; display: inline-grid; place-items: center; cursor: pointer; }
+  button.theme:hover { color: var(--text-primary); background: var(--accent-wash); }
+  button.theme svg { width: 18px; height: 18px; }
   button.teams { background: var(--series-1); border: 1px solid var(--series-1); color: #fff; border-radius: 8px; padding: 0.35rem 0.8rem; cursor: pointer; font: inherit; font-weight: 600; }
   button.teams:disabled { opacity: 0.7; cursor: progress; }
   .teams-status { font-size: 0.85rem; color: var(--text-secondary); }
@@ -120,7 +122,8 @@
   .qr-card { text-align: center; }
   #qr { display: grid; place-items: center; padding: 0.75rem; background: #fff; border-radius: 10px; margin: 0.5rem auto; width: max-content; }
   #qr img, #qr canvas { width: 220px; height: 220px; }
-  .app-url { font-size: 0.8rem; color: var(--text-secondary); word-break: break-all; }
+  .app-url { display: block; font-size: 0.8rem; color: var(--series-1); word-break: break-all; }
+  .app-url:hover { text-decoration: none; }
 
   .ask form { display: flex; gap: 0.5rem; }
   .ask input { flex: 1; min-width: 0; font: inherit; padding: 0.55rem 0.75rem; border-radius: 8px; border: 1px solid var(--axis); background: var(--surface-1); color: var(--text-primary); }
@@ -164,7 +167,7 @@
     <span class="teams-status" id="pipeline-msg" role="status" aria-live="polite"></span>
     <input class="key" id="presenter-key" type="password" placeholder="Presenter key" aria-label="Presenter key" autocomplete="off" hidden />
     <button class="teams" id="pipeline-btn" type="button" title="Presenter only: sync today's events into Databricks and run the pipeline">Run pipeline</button>
-    <button class="theme" id="theme-toggle" type="button">Theme</button>
+    <button class="theme" id="theme-toggle" type="button" aria-label="Switch theme"></button>
   </header>
 
   <div class="pipeline-wrap" id="pipeline-wrap" hidden>
@@ -220,7 +223,7 @@
         <h2>Try it on your phone</h2>
         <p class="sub">Scan, sign in, and use ReportHub. Your clicks appear here within seconds.</p>
         <div id="qr" aria-label="QR code linking to the ReportHub demo app"></div>
-        <div class="app-url" id="app-url"></div>
+        <a class="app-url" id="app-url" target="_blank" rel="noopener"></a>
       </section>
 
       <section class="card ask">

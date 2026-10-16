@@ -207,6 +207,49 @@ test("Run pipeline asks for the presenter key, then shows each task's progress",
   await expect(page.locator("#pipeline-btn")).toBeEnabled();
 });
 
+test("Run pipeline says when a run is already in progress and shows that run", async ({ page }) => {
+  await page.route("**/api/pipeline/status**", (route) =>
+    route.request().url().includes("run_id=41")
+      ? route.fulfill({ json: { runId: 41, state: "RUNNING", tasks: [{ key: "ingestion", state: "RUNNING" }] } })
+      : route.fulfill({ status: 400, json: { error: "run_id required" } })
+  );
+  await page.route("**/api/pipeline/run", (route) => route.fulfill({ status: 409, json: { status: "running", runId: 41 } }));
+  await page.goto("/demo-app/live.html?api=http://mock.local/api");
+  await page.click("#pipeline-btn");
+  await page.fill("#presenter-key", "lens-test");
+  await page.press("#presenter-key", "Enter");
+  await page.click("#pipeline-btn");
+  await expect(page.locator("#pipeline-msg")).toHaveText("⚠ The pipeline is already running");
+  await expect(page.locator("#pipeline-title")).toHaveText("Pipeline run 41");
+  await expect(page.locator('.step[data-task="ingestion"]')).toHaveClass(/running/);
+  await expect(page.locator("#pipeline-btn")).toBeDisabled();
+});
+
+test("The theme button switches between light and dark with a sun/moon icon", async ({ page }) => {
+  await page.emulateMedia({ colorScheme: "light" });
+  await page.goto("/demo-app/live.html?api=http://mock.local/api");
+  const button = page.locator("#theme-toggle");
+  const html = page.locator("html");
+  await expect(html).toHaveAttribute("data-theme", "light");
+  await expect(button).toHaveAttribute("aria-label", "Switch to dark theme");
+  await expect(button.locator("svg")).toHaveCount(1);
+  await button.click();
+  await expect(html).toHaveAttribute("data-theme", "dark");
+  await expect(button).toHaveAttribute("aria-label", "Switch to light theme");
+  await button.click();
+  await expect(html).toHaveAttribute("data-theme", "light");
+  await button.click();
+  await page.reload();
+  await expect(html).toHaveAttribute("data-theme", "dark"); // remembered over the light system setting
+});
+
+test("The ReportHub link under the QR code is clickable", async ({ page }) => {
+  await page.goto("/demo-app/live.html?api=http://mock.local/api");
+  const link = page.locator("#app-url");
+  await expect(link).toHaveAttribute("href", /demo-app\/index\.html$/);
+  await expect(link).toHaveAttribute("target", "_blank");
+});
+
 test("Run pipeline rejects a wrong presenter key and asks again", async ({ page }) => {
   let runs = 0;
   await page.route("**/api/pipeline/status**", (route) => route.fulfill({ status: 401, json: { error: "Presenter key required" } }));
